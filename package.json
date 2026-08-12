@@ -1,0 +1,42 @@
+{
+  "name": "pulseconvert-desktop",
+  "version": "0.1.0",
+  "description": "Pulse Convert desktop client - converts GTA5 mods using your own machine's compute instead of the server's",
+  "author": "Pulse Systems <support@pulsesystems.dev>",
+  "main": "dist/electron/main.js",
+  "private": true,
+  "scripts": {
+    "start": "node -e \"delete process.env.ELECTRON_RUN_AS_NODE; const {spawnSync}=require('child_process'); spawnSync(require('electron'),['.'],{stdio:'inherit',env:process.env})\"",
+    "dev": "npm run build:ts && npm start",
+    "build:ts": "tsup",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run build:ts && electron-builder",
+    "build:dir": "npm run build:ts && electron-builder --dir",
+    "pack": "npm run build:ts && electron-builder --publish never"
+  },
+  "build": {
+    "extends": "./electron-builder.yml"
+  },
+  "dependencies": {
+    "electron-log": "^5.2.0",
+    "electron-store": "^8.2.0",
+    "electron-updater": "^6.8.9",
+    "fast-xml-parser": "^5.10.1",
+    "ssh2-sftp-client": "^12.1.1",
+    "yauzl": "^3.4.0",
+    "yazl": "^3.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ssh2-sftp-client": "^9.0.6",
+    "@types/yauzl": "^3.4.0",
+    "@types/yazl": "^3.3.1",
+    "electron": "^43.0.0",
+    "electron-builder": "^26.15.3",
+    "tsup": "^8.0.0",
+    "typescript": "^5.6.0"
+  },
+  "overrides": {
+    "esbuild": "0.28.1"
+  }
+}

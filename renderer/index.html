@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+  <title>Pulse Convert Desktop</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="card">
+    <div class="logo">PC</div>
+
+    <div id="view-signed-out">
+      <h1>Pulse Convert Desktop</h1>
+      <p>Sign in to convert mods using this machine and sync with your Pulse account.</p>
+      <button class="primary" id="btn-sign-in">Sign in with Pulse</button>
+    </div>
+
+    <div id="view-starting" class="hidden">
+      <div class="spinner"></div>
+      <p>Starting sign-in&hellip;</p>
+    </div>
+
+    <div id="view-awaiting" class="hidden">
+      <h1>Link this device</h1>
+      <p>A browser tab will open. If it doesn't, use the button below and enter this code:</p>
+      <code id="user-code">----&#8209;----</code>
+      <button class="primary" id="btn-open-browser">Open in browser</button>
+      <button class="ghost" id="btn-cancel">Cancel</button>
+    </div>
+
+    <div id="view-signed-in" class="hidden">
+      <h1>Convert a mod</h1>
+      <p>Paste a gta5-mods.com, MediaFire, or ShareMods link. Conversion runs on this machine.</p>
+      <input type="text" id="convert-url" placeholder="https://www.gta5-mods.com/vehicles/..." autocomplete="off" />
+      <button class="primary" id="btn-convert">Convert</button>
+
+      <div id="convert-progress" class="hidden">
+        <div class="spinner"></div>
+        <p id="convert-progress-label">Working&hellip;</p>
+      </div>
+
+      <div id="convert-result" class="hidden">
+        <p class="status-line" id="convert-result-label"></p>
+        <button class="ghost" id="btn-show-in-folder">Show in folder</button>
+      </div>
+
+      <div id="convert-error" class="hidden">
+        <p class="error-line" id="convert-error-label"></p>
+      </div>
+
+      <button class="ghost" id="btn-settings">Deploy settings</button>
+      <button class="ghost" id="btn-sign-out">Sign out</button>
+    </div>
+
+    <div id="view-settings" class="hidden">
+      <h1>Deploy settings</h1>
+      <p>Where a converted resource goes automatically. Kept on this device only - never sent to Pulse Convert.</p>
+
+      <select id="deploy-mode">
+        <option value="none">Don't auto-deploy</option>
+        <option value="local">Drop into a local folder</option>
+        <option value="sftp">Upload to a remote server (SFTP)</option>
+      </select>
+
+      <div id="local-fields" class="hidden">
+        <div class="field-row">
+          <input type="text" id="local-folder" placeholder="No folder chosen" readonly />
+          <button class="ghost small" id="btn-choose-folder">Browse&hellip;</button>
+        </div>
+      </div>
+
+      <div id="sftp-fields" class="hidden">
+        <input type="text" id="sftp-host" placeholder="Host (e.g. 192.168.1.10)" />
+        <input type="text" id="sftp-port" placeholder="Port (default 22)" />
+        <input type="text" id="sftp-username" placeholder="Username" />
+        <input type="password" id="sftp-password" placeholder="Password (leave blank to keep current)" />
+        <input type="text" id="sftp-remote-path" placeholder="Remote resources path, e.g. /home/fxserver/resources" />
+      </div>
+
+      <button class="primary" id="btn-save-settings">Save</button>
+      <button class="ghost" id="btn-close-settings">Back</button>
+    </div>
+
+    <div id="view-denied" class="hidden">
+      <h1>Sign-in denied</h1>
+      <p>The sign-in request was denied. You can try again.</p>
+      <button class="primary" id="btn-retry-denied">Try again</button>
+    </div>
+
+    <div id="view-expired" class="hidden">
+      <h1>Code expired</h1>
+      <p>That code expired before it was approved. Start again.</p>
+      <button class="primary" id="btn-retry-expired">Try again</button>
+    </div>
+
+    <div id="view-error" class="hidden">
+      <h1>Something went wrong</h1>
+      <p id="error-message" class="error-line"></p>
+      <button class="primary" id="btn-retry-error">Try again</button>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

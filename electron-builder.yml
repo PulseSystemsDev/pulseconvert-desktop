@@ -1,0 +1,55 @@
+appId: dev.pulsesystems.convertdesktop
+productName: Pulse Convert Desktop
+copyright: "Copyright © 2026 Pulse Systems"
+
+directories:
+  output: release
+  buildResources: assets
+
+files:
+  - dist/**
+  - renderer/**
+  - "!**/*.map"
+
+extraResources:
+  - from: resources/
+    to: resources/
+
+publish:
+  provider: github
+  owner: YesYesTheDev
+  repo: pulseconvert-desktop
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: assets/icon.ico
+  artifactName: "PulseConvertDesktop-Setup-${version}.exe"
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Pulse Convert Desktop
+  deleteAppDataOnUninstall: false
+
+mac:
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+  icon: assets/icon.icns
+  artifactName: "PulseConvertDesktop-${version}.dmg"
+  category: public.app-category.utilities
+
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+  icon: assets/icon.png
+  artifactName: "PulseConvertDesktop-${version}.AppImage"
+  category: Utility
+
+compression: maximum
+generateUpdatesFilesForAllChannels: true
