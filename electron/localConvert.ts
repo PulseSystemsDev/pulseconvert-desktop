@@ -6,25 +6,16 @@ import { addonifyVehicle } from './pipeline/addonify';
 import { selectPreferredVariant } from './pipeline/variants';
 import { bundleSingleResource } from './pipeline/bundle';
 import { extractZip } from './pipeline/unpack';
-import { isRawRpf, isRar, is7z, isZip, extractRpf, extractSevenZip, optimizeYtd } from './pipeline/localNative';
+import { isRawRpf, isRar, is7z, isZip, extractRpf, extractSevenZip } from './pipeline/localNative';
 import { desktopFetchJson } from './apiClient';
+import { optimizeEmbeddedTextures, optimizeYtdFiles, splitYtdFiles } from './optimizeFlow';
+import type { ConversionProfile, ConversionTarget } from './types';
 
-/**
- * Local port of a simplified worker/index.ts convertVehiclePostprocess - the common case only
- * (vehicle category, addon target, "convert" mode). Deliberately scoped for this first pass:
- *   - Nested-archive unwrapping (compressed archive-in-archive, and raw .rpf-in-.rpf) - ported.
- *   - Standalone .ytd optimization for oversized textures - ported (optimizeYtd, via the bundled
- *     rpf-tool). YTD *splitting* (rpf-tool's ytd-split, for a single dictionary near FiveM's own
- *     streaming-asset size target) is NOT ported yet - a real, rarer edge case, tracked as a
- *     known follow-up rather than silently skipped.
- *   - No prop/EUP/weapon/map/ped categories - vehicle only, a deliberate scope line matching how
- *     Phase 1 of the 3D-preview work was scoped, not an oversight.
- * A mod that needs one of the still-missing pieces still converts correctly server-side - this
- * app can always fall back to submitting the URL as a normal job instead of converting locally.
- */
+/** Local port of the worker's vehicle postprocessor. Both addon/replace targets are supported;
+ * preserve always performs lossless YTD splitting/relinking, while performance additionally
+ * downscales every standalone YTD and runs the best-effort Blender embedded-texture pass. URL
+ * conversion remains vehicle-focused; the broader content categories live in manual Optimize. */
 
-const STREAM_ASSET_TARGET_BYTES = 15 * 1024 * 1024;
-const YTD_OPTIMIZATION_CAPS = [2048, 1536, 1024, 768, 512, 384, 256, 192, 128, 64];
 const MAX_TEXTURE_SIZE = 1024; // matches the server's own practical FiveM diffuse-texture cap
 
 function isNestedCompressedArchive(filePath: string): boolean {
@@ -38,7 +29,11 @@ function isNestedCompressedArchive(filePath: string): boolean {
 /** Unwraps an archive-inside-an-archive (a real, not-uncommon gta5-mods.com download shape) -
  *  direct port of worker/pipeline.ts's extractNestedCompressedArchives, same 4-round cap against
  *  a pathological/malicious nesting depth. */
-async function extractNestedCompressedArchives(extractedPaths: string[], workDir: string): Promise<{ paths: string[]; fixLog: string[] }> {
+async function extractNestedCompressedArchives(
+  extractedPaths: string[],
+  workDir: string,
+  target: ConversionTarget,
+): Promise<{ paths: string[]; fixLog: string[] }> {
   const allPaths = [...extractedPaths];
   const seenPaths = new Set(allPaths.map((p) => path.resolve(p)));
   const processedArchives = new Set<string>();
@@ -57,8 +52,10 @@ async function extractNestedCompressedArchives(extractedPaths: string[], workDir
       const nestedOutDir = path.join(workDir, `nested-archive-${nestedIndex++}-${archiveBase}`);
       try {
         const nestedPaths = isZip(archive) ? await extractZip(archive, nestedOutDir) : await extractSevenZip(archive, nestedOutDir);
+        const variantResult = selectPreferredVariant(nestedOutDir, nestedPaths, target);
         fixLog.push(`Extracted nested archive "${path.basename(archive)}" (${nestedPaths.length} file(s)).`);
-        for (const nestedPath of nestedPaths) {
+        if (variantResult.note) fixLog.push(`${path.basename(archive)}: ${variantResult.note}`);
+        for (const nestedPath of variantResult.paths) {
           const resolvedNestedPath = path.resolve(nestedPath);
           if (seenPaths.has(resolvedNestedPath)) continue;
           seenPaths.add(resolvedNestedPath);
@@ -78,10 +75,15 @@ async function extractNestedCompressedArchives(extractedPaths: string[], workDir
 /** Unwraps a raw .rpf nested inside another (already-extracted) .rpf - a separate case from
  *  compressed-archive nesting above, ported from the equivalent loop in worker/index.ts /
  *  worker/catalog-build.ts (both carry an identical inline version of this). */
-async function extractNestedRpfs(extractedPaths: string[], workDir: string): Promise<string[]> {
+async function extractNestedRpfs(
+  extractedPaths: string[],
+  workDir: string,
+  target: ConversionTarget,
+): Promise<{ paths: string[]; fixLog: string[] }> {
   const allPaths = [...extractedPaths];
   let pendingRpfs = allPaths.filter((p) => path.extname(p).toLowerCase() === '.rpf');
   let nestedIndex = 0;
+  const fixLog: string[] = [];
 
   for (let round = 0; round < 6 && pendingRpfs.length > 0; round++) {
     const discovered: string[] = [];
@@ -90,8 +92,10 @@ async function extractNestedRpfs(extractedPaths: string[], workDir: string): Pro
       try {
         await extractRpf(candidate, nestedOutDir);
         const nestedFiles = listFilesRecursive(nestedOutDir);
-        allPaths.push(...nestedFiles);
-        discovered.push(...nestedFiles.filter((p) => path.extname(p).toLowerCase() === '.rpf'));
+        const variantResult = selectPreferredVariant(nestedOutDir, nestedFiles, target);
+        allPaths.push(...variantResult.paths);
+        discovered.push(...variantResult.paths.filter((p) => path.extname(p).toLowerCase() === '.rpf'));
+        if (variantResult.note) fixLog.push(`${path.basename(candidate)}: ${variantResult.note}`);
       } catch {
         // Not every .rpf-named file is actually a container - a bad/foreign one is silently
         // skipped here, matching the server's own behavior (best-effort discovery, not a
@@ -101,52 +105,7 @@ async function extractNestedRpfs(extractedPaths: string[], workDir: string): Pro
     pendingRpfs = discovered;
   }
 
-  return allPaths;
-}
-
-/** Downscales any standalone .ytd whose file size already exceeds FiveM's practical streaming
- *  target - direct port of worker/pipeline.ts's tryOptimizeYtdFiles, scoped to 'oversized-files'
- *  only (not 'all', which the server only does for the explicit performance-profile choice this
- *  app doesn't have a settings toggle for yet - always-on oversized-only optimization is a pure
- *  improvement with no tradeoff, so it isn't gated behind one). */
-async function tryOptimizeOversizedYtds(files: ClassifiedFiles, onProgress: (label: string) => void): Promise<string[]> {
-  const fixLog: string[] = [];
-  const candidates = files.ytd.filter((ytdPath) => {
-    try {
-      return fs.statSync(ytdPath).size > STREAM_ASSET_TARGET_BYTES;
-    } catch {
-      return false;
-    }
-  });
-
-  for (const [idx, ytdPath] of candidates.entries()) {
-    onProgress(`Optimizing texture dictionary ${idx + 1}/${candidates.length}: ${path.basename(ytdPath)}`);
-    const tmpOut = `${ytdPath}.optimized`;
-    try {
-      const oldSize = fs.statSync(ytdPath).size;
-      const caps = YTD_OPTIMIZATION_CAPS.filter((n) => n <= MAX_TEXTURE_SIZE);
-      let finalSize = oldSize;
-      let finalCap: number | null = null;
-      for (const cap of caps) {
-        if (fs.existsSync(tmpOut)) fs.rmSync(tmpOut);
-        const newSize = await optimizeYtd(ytdPath, tmpOut, cap);
-        if (newSize !== null) {
-          fs.renameSync(tmpOut, ytdPath);
-          finalSize = newSize;
-          finalCap = cap;
-        }
-        if (finalSize <= STREAM_ASSET_TARGET_BYTES) break;
-      }
-      if (finalCap !== null) {
-        fixLog.push(`Optimized "${path.basename(ytdPath)}" (${oldSize} -> ${finalSize} bytes, max ${finalCap}px).`);
-      }
-    } catch (err) {
-      console.warn('[localConvert] .ytd optimization skipped for', path.basename(ytdPath), (err as Error).message);
-      if (fs.existsSync(tmpOut)) fs.rmSync(tmpOut);
-    }
-  }
-
-  return fixLog;
+  return { paths: allPaths, fixLog };
 }
 
 function listFilesRecursive(dir: string): string[] {
@@ -207,7 +166,9 @@ export async function convertVehicleLocally(
   workDir: string,
   fallbackTitle: string,
   sourceUrl: string | null,
-  onProgress: (label: string) => void,
+  onProgress: (label: string, current?: number, total?: number) => void,
+  profile: ConversionProfile = 'preserve',
+  target: ConversionTarget = 'addon',
 ): Promise<LocalConvertResult> {
   const extractDir = path.join(workDir, 'extracted');
 
@@ -224,42 +185,62 @@ export async function convertVehicleLocally(
     throw new Error('Unrecognized archive format - expected .zip, .rar, .7z, .oiv, or a raw .rpf.');
   }
 
-  onProgress('Checking nested archives');
   const fixLog: string[] = [];
-  const nestedArchiveResult = await extractNestedCompressedArchives(extractedPaths, workDir);
-  extractedPaths = nestedArchiveResult.paths;
-  fixLog.push(...nestedArchiveResult.fixLog);
-  extractedPaths = await extractNestedRpfs(extractedPaths, workDir);
-
   onProgress('Checking for alternative install variants');
-  const variantResult = selectPreferredVariant(extractDir, extractedPaths);
+  const variantResult = selectPreferredVariant(extractDir, extractedPaths, target);
   extractedPaths = variantResult.paths;
   if (variantResult.note) fixLog.push(variantResult.note);
 
+  onProgress('Checking nested archives');
+  const nestedArchiveResult = await extractNestedCompressedArchives(extractedPaths, workDir, target);
+  extractedPaths = nestedArchiveResult.paths;
+  fixLog.push(...nestedArchiveResult.fixLog);
+  const nestedRpfResult = await extractNestedRpfs(extractedPaths, workDir, target);
+  extractedPaths = nestedRpfResult.paths;
+  fixLog.push(...nestedRpfResult.fixLog);
+
   onProgress('Classifying files');
-  const files: ClassifiedFiles = classifyFiles(extractedPaths);
+  let files: ClassifiedFiles = classifyFiles(extractedPaths);
   if (files.yft.length === 0 && files.meta.vehicles.length === 0) {
     throw new Error('No recognizable vehicle files (.yft, vehicles.meta) were found in this archive - only vehicle mods can be converted locally right now.');
   }
 
   onProgress('Validating and repairing metadata');
-  const { vehicles, fixLog: metaFixLog } = validateAndFixMeta(files, extractDir);
-  fixLog.push(...metaFixLog);
-
-  onProgress('Checking for hash collisions');
-  const issuedHashes = await fetchIssuedHashes();
-
-  for (const vehicle of vehicles) {
-    const result = addonifyVehicle(files, vehicle.modelName, issuedHashes);
-    fixLog.push(...result.fixLog);
-    if (result.renamed) {
-      issuedHashes.add(result.newHash); // so a second vehicle in the same pack can't reuse it
-      await reportIssuedHash(result.newHash, result.newName);
-    }
+  const { vehicles, fixLog: metaFixLog, warnings } = validateAndFixMeta(files, extractDir);
+  fixLog.push(...metaFixLog, ...warnings.map((warning) => `Warning: ${warning}`));
+  if (vehicles.length === 0) {
+    throw new Error('No valid vehicle registration could be recovered from this archive.');
   }
 
-  onProgress('Checking texture dictionary sizes');
-  fixLog.push(...(await tryOptimizeOversizedYtds(files, onProgress)));
+  if (target === 'addon') {
+    onProgress('Checking for hash collisions');
+    const issuedHashes = await fetchIssuedHashes();
+    for (const [index, vehicle] of vehicles.entries()) {
+      onProgress(`Preparing vehicle ${index + 1}/${vehicles.length}: ${vehicle.modelName}`, index + 1, vehicles.length);
+      const result = addonifyVehicle(files, vehicle.modelName, issuedHashes);
+      fixLog.push(...result.fixLog);
+      if (result.renamed) {
+        issuedHashes.add(result.newHash);
+        await reportIssuedHash(result.newHash, result.newName);
+      }
+    }
+  } else {
+    fixLog.push('Replace mode selected: original model names and metadata references were preserved.');
+  }
+
+  const splitResult = await splitYtdFiles(files, onProgress, path.join(workDir, 'ytd-splits'));
+  fixLog.push(...splitResult.fixLog);
+  if (profile === 'performance') {
+    fixLog.push('Performance optimized mode selected: standalone and embedded textures are capped at 1024px.');
+    const ytdResult = await optimizeYtdFiles(files, MAX_TEXTURE_SIZE, onProgress, 'all');
+    fixLog.push(...ytdResult.fixLog);
+    onProgress('Checking embedded model textures');
+    const embedded = await optimizeEmbeddedTextures(files, workDir, MAX_TEXTURE_SIZE);
+    files = embedded.files;
+    fixLog.push(...embedded.fixLog);
+  } else if (files.ytd.length > 0) {
+    fixLog.push('Preserved original texture resolution; texture dictionaries were only split/relinked for safer FiveM streaming.');
+  }
 
   const resourceName = sanitizeResourceName(fallbackTitle || vehicles[0]?.modelName || 'converted_vehicle');
   onProgress(`Bundling ${resourceName}`);

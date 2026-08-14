@@ -1,6 +1,6 @@
 appId: dev.pulsesystems.convertdesktop
 productName: Pulse Convert Desktop
-copyright: "Copyright © 2026 Pulse Systems"
+copyright: "Copyright (c) 2026 Pulse Systems"
 
 directories:
   output: release
@@ -34,22 +34,6 @@ nsis:
   createStartMenuShortcut: true
   shortcutName: Pulse Convert Desktop
   deleteAppDataOnUninstall: false
-
-mac:
-  target:
-    - target: dmg
-      arch: [x64, arm64]
-  icon: assets/icon.icns
-  artifactName: "PulseConvertDesktop-${version}.dmg"
-  category: public.app-category.utilities
-
-linux:
-  target:
-    - target: AppImage
-      arch: [x64]
-  icon: assets/icon.png
-  artifactName: "PulseConvertDesktop-${version}.AppImage"
-  category: Utility
 
 compression: maximum
 generateUpdatesFilesForAllChannels: true

@@ -1,48 +1,69 @@
 # Pulse Convert Desktop
 
-Desktop client for [Pulse Convert](https://convert.pulsesystems.dev) - runs the conversion
-pipeline on your own machine instead of PulseConvert's server.
+Pulse Convert Desktop is the local workstation companion for
+[Pulse Convert](https://convert.pulsesystems.dev). It converts GTA V mods, optimizes existing
+FiveM resources with the machine's native tools, and can deploy completed resources locally or
+over SFTP. The packaged app currently targets 64-bit Windows because the bundled RPF processor is
+a Windows binary.
 
-## Status: Phase A (device sign-in only)
+## What it does
 
-This is the first phase of a larger plan (see the project's own planning notes). Right now this
-app does exactly one thing: sign in via Pulse Accounts' device-code flow (RFC 8628) and hold a
-securely-stored (OS-keychain-encrypted, `electron.safeStorage`) access/refresh token pair,
-auto-refreshed in the background. It does not convert anything yet - the local conversion
-pipeline, the gta5mods resolve/catalog-dedup API call, dashboard remote commands, and auto-deploy
-are later phases.
+- Signs in through Pulse Accounts using the OAuth device-code flow.
+- Converts supported mod links with preserve or performance processing profiles.
+- Builds add-on or replacement vehicle resources.
+- Optimizes resource archives, standalone stream files, and resource folders.
+- Supports props, vehicles, clothing, and texture-focused optimization plans.
+- Runs preflight checks against the configured RPF, Blender, and 7-Zip tools.
+- Produces a new ZIP and a measured run report instead of overwriting source content.
+- Can reveal an output locally, deploy to a local resources folder, or deploy through SFTP.
+- Receives queued conversion and optimization commands from the Pulse Convert dashboard.
+
+The renderer is a framework-free HTML, CSS, and JavaScript workspace. Electron's preload bridge
+keeps Node and filesystem access outside the renderer.
+
+## Current boundaries
+
+- Link conversion runs the local vehicle pipeline; the manual Optimize workspace handles props,
+  clothing, and texture resources.
+- Optimize changes directly accessible stream assets. Nested ZIP, RAR, 7z, OIV, and RPF
+  containers are preserved byte-for-byte; extract a nested-only resource before optimizing it.
+- Tool readiness verifies the configured executables. It does not yet verify the Sollumz operator
+  inside Blender, and SFTP deployment does not yet support host-key fingerprint pinning.
 
 ## Development
 
-```
+```powershell
 npm install
 npm run dev
 ```
 
-`npm run dev` builds the TypeScript main/preload processes (via `tsup`) and launches Electron.
+Useful checks:
 
-By default this points at production Pulse Accounts (`https://accounts.pulsesystems.dev`) and the
-production `pulseconvert-desktop` OIDC client. To point at a local Pulse Accounts dev instance
-instead, set before running:
-
+```powershell
+npm run typecheck
+npm run build:ts
+npm run build:dir
 ```
-PULSE_ACCOUNTS_ISSUER=http://localhost:8090
+
+By default, the app uses production Pulse Accounts and the production Pulse Convert API. To use
+a local Pulse Accounts instance, set this before launch:
+
+```powershell
+$env:PULSE_ACCOUNTS_ISSUER = "http://localhost:8090"
+npm run dev
 ```
 
 ## Architecture
 
-- `electron/main.ts` - app lifecycle, window creation, IPC handlers.
-- `electron/authManager.ts` - the sign-in state machine (start/poll/refresh/sign-out).
-- `electron/deviceAuth.ts` - low-level RFC 8628 HTTP calls against Pulse Accounts (`/device/auth`,
-  `/token`). No client secret - this app is registered as a public OIDC client.
-- `electron/tokenStore.ts` - encrypted token persistence via `safeStorage`.
-- `electron/configStore.ts` - non-secret settings (issuer URL, client id, API base URL) via
-  `electron-store`.
-- `electron/preload.ts` - exposes a narrow, typed `window.pulseConvertDesktop` API to the renderer
-  via `contextBridge` (no direct Node/Electron access from the UI).
-- `renderer/` - plain HTML/CSS/JS UI, no framework (matches the rest of the Pulse ecosystem's
-  preference for framework-free UI where the surface is this small).
+- `electron/main.ts`: app lifecycle, BrowserWindow creation, native dialogs, and IPC handlers.
+- `electron/authManager.ts`: device sign-in, refresh, and sign-out state machine.
+- `electron/convertFlow.ts`: linked-mod resolution and conversion orchestration.
+- `electron/localConvert.ts`: local archive, RPF, metadata, texture, and resource build pipeline.
+- `electron/optimizeFlow.ts`: non-destructive local optimization, remote-job orchestration, and report generation.
+- `electron/configStore.ts`: non-secret app, tool, output, and deployment settings.
+- `electron/tokenStore.ts`: access and refresh token persistence protected by `safeStorage`.
+- `electron/preload.ts`: narrow typed `window.pulseConvertDesktop` renderer bridge.
+- `renderer/`: the process-led desktop workspace and its local run history.
 
-Sibling project: `d:\Desktop\PulseMDT\desktop` (`pulsemdt-desktop`) is the *unrelated* PulseMDT CAD
-desktop client - this app's tooling (`tsup`, `electron-builder`) deliberately mirrors it for
-consistency, but the two are otherwise independent.
+The sibling `desktop` project is the unrelated PulseMDT CAD client. The applications share build
+conventions, but their product behavior and data are separate.

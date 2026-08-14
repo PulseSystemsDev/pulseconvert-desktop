@@ -27,6 +27,7 @@ export class CommandListener {
   private handler: CommandHandler;
   private stopped = false;
   private abortController: AbortController | null = null;
+  private generation = 0;
 
   constructor(deviceId: string, handler: CommandHandler) {
     this.deviceId = deviceId;
@@ -35,27 +36,31 @@ export class CommandListener {
 
   start(): void {
     this.stopped = false;
-    void this.loop();
+    const generation = ++this.generation;
+    void this.loop(generation);
   }
 
   stop(): void {
     this.stopped = true;
+    this.generation += 1;
     this.abortController?.abort();
   }
 
-  private async loop(): Promise<void> {
-    while (!this.stopped) {
+  private async loop(generation: number): Promise<void> {
+    while (!this.stopped && generation === this.generation) {
       try {
-        await this.connectOnce();
+        await this.connectOnce(generation);
       } catch (err) {
-        log.warn('[commandListener] connection dropped, reconnecting in 5s', err);
+        if (!this.stopped && generation === this.generation) {
+          log.warn('[commandListener] connection dropped, reconnecting in 5s', err);
+        }
       }
-      if (this.stopped) return;
+      if (this.stopped || generation !== this.generation) return;
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
   }
 
-  private async connectOnce(): Promise<void> {
+  private async connectOnce(generation: number): Promise<void> {
     const tokens = loadTokens();
     if (!tokens) {
       // Not signed in yet - back off longer than the standard reconnect delay so this doesn't
@@ -76,7 +81,7 @@ export class CommandListener {
     const decoder = new TextDecoder();
     let buffer = '';
 
-    while (!this.stopped) {
+    while (!this.stopped && generation === this.generation) {
       const { done, value } = await reader.read();
       if (done) return;
       buffer += decoder.decode(value, { stream: true });
