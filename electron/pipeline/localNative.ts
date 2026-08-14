@@ -22,7 +22,23 @@ function resourcesRoot(): string {
   return app.isPackaged ? path.join(process.resourcesPath, 'resources') : path.join(__dirname, '..', '..', 'resources');
 }
 
-function resolveRpfToolPath(): string {
+export type NativeToolSource = 'bundled' | 'override' | 'detected' | 'path' | 'missing';
+
+export interface NativeToolStatus {
+  available: boolean;
+  path: string | null;
+  source: NativeToolSource;
+  required: boolean;
+  detail: string;
+}
+
+export interface NativeToolsStatus {
+  rpfTool: NativeToolStatus;
+  blender: NativeToolStatus;
+  sevenZip: NativeToolStatus;
+}
+
+export function resolveRpfToolPath(): string {
   const override = config.get('rpfToolPath');
   if (override) return override;
   const bundled = path.join(resourcesRoot(), process.platform === 'win32' ? 'rpf-tool.exe' : 'rpf-tool');
@@ -71,9 +87,15 @@ export function detectBlenderPath(): string | null {
   return 'blender';
 }
 
+/** Public path resolver used by the main process when displaying native-tool readiness. Kept as
+ *  a small alias so existing callers of detectBlenderPath retain their current contract. */
+export function resolveBlenderPath(): string | null {
+  return detectBlenderPath();
+}
+
 function run(command: string, args: string[], env?: Record<string, string>): Promise<string> {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, ...env } });
+    const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, env: { ...process.env, ...env } });
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', (chunk) => (stdout += chunk.toString()));
@@ -167,10 +189,126 @@ function parseSevenZipListing(output: string): SevenZipEntry[] {
 /** Requires system 7-Zip on PATH (or a configured override) - bundling 7-Zip's own binary is a
  *  separate licensing/packaging concern this phase doesn't take on; the error message tells the
  *  user exactly what's missing rather than failing silently. */
-function resolveSevenZipPath(): string {
+export function resolveSevenZipPath(): string {
   const override = config.get('sevenZipPath');
   if (override) return override;
   return process.platform === 'win32' ? '7z' : '7zz';
+}
+
+interface NativeToolResolution {
+  label: string;
+  path: string | null;
+  source: NativeToolSource;
+  required: boolean;
+  probeArgs: string[];
+}
+
+function resolveRpfTool(): NativeToolResolution {
+  return {
+    label: 'RPF tool',
+    path: resolveRpfToolPath(),
+    source: config.get('rpfToolPath') ? 'override' : 'bundled',
+    required: true,
+    probeArgs: ['--help'],
+  };
+}
+
+function resolveBlenderTool(): NativeToolResolution {
+  const configured = config.get('blenderPath');
+  const resolvedPath = resolveBlenderPath();
+  let source: NativeToolSource = 'detected';
+  if (!resolvedPath) source = 'missing';
+  else if (configured && resolvedPath === configured) source = 'override';
+  else if (!path.isAbsolute(resolvedPath)) source = 'path';
+  return { label: 'Blender', path: resolvedPath, source, required: false, probeArgs: ['--version'] };
+}
+
+function resolveSevenZipTool(): NativeToolResolution {
+  return {
+    label: '7-Zip',
+    path: resolveSevenZipPath(),
+    source: config.get('sevenZipPath') ? 'override' : 'path',
+    required: false,
+    probeArgs: ['i'],
+  };
+}
+
+/** Starts an executable with a read-only informational command. No shell is involved, so custom
+ *  paths are never interpreted as command text. A timeout prevents a damaged executable from
+ *  making the settings/status IPC hang indefinitely. */
+function probeExecutable(command: string, args: string[], timeoutMs = 5_000): Promise<{ available: boolean; detail: string }> {
+  return new Promise((resolve) => {
+    let settled = false;
+    let timer: NodeJS.Timeout | undefined;
+    const finish = (available: boolean, detail: string) => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      resolve({ available, detail });
+    };
+
+    let child;
+    try {
+      child = spawn(command, args, { stdio: 'ignore', windowsHide: true });
+    } catch (err) {
+      finish(false, (err as Error).message);
+      return;
+    }
+
+    child.once('error', (err) => finish(false, err.message));
+    child.once('close', (code, signal) => {
+      if (code === 0) finish(true, 'Ready.');
+      else finish(false, signal ? `Probe stopped by ${signal}.` : `Probe exited with code ${code ?? 'unknown'}.`);
+    });
+
+    timer = setTimeout(() => {
+      child.kill();
+      finish(false, `Probe timed out after ${timeoutMs} ms.`);
+    }, timeoutMs);
+  });
+}
+
+async function probeNativeTool(resolution: NativeToolResolution): Promise<NativeToolStatus> {
+  if (!resolution.path) {
+    return {
+      available: false,
+      path: null,
+      source: 'missing',
+      required: resolution.required,
+      detail: `${resolution.label} was not found.`,
+    };
+  }
+  const result = await probeExecutable(resolution.path, resolution.probeArgs);
+  return {
+    available: result.available,
+    path: resolution.path,
+    source: resolution.source,
+    required: resolution.required,
+    detail: result.available ? `${resolution.label} is ready.` : `${resolution.label} is unavailable: ${result.detail}`,
+  };
+}
+
+export function getRpfToolStatus(): Promise<NativeToolStatus> {
+  return probeNativeTool(resolveRpfTool());
+}
+
+export function getBlenderStatus(): Promise<NativeToolStatus> {
+  return probeNativeTool(resolveBlenderTool());
+}
+
+export function getSevenZipStatus(): Promise<NativeToolStatus> {
+  return probeNativeTool(resolveSevenZipTool());
+}
+
+/** Resolves and probes all tools concurrently. This is safe to call from a status/settings IPC:
+ *  it only runs each tool's informational command and never writes files or changes config. */
+export async function getNativeToolsStatus(): Promise<NativeToolsStatus> {
+  const [rpfTool, blender, sevenZip] = await Promise.all([
+    getRpfToolStatus(),
+    getBlenderStatus(),
+    getSevenZipStatus(),
+  ]);
+  return { rpfTool, blender, sevenZip };
 }
 
 export async function extractSevenZip(archivePath: string, destDir: string): Promise<string[]> {
@@ -232,6 +370,35 @@ export async function optimizeYtd(ytdPath: string, outputPath: string, maxSize: 
   const stdout = await run(tool, ['ytd-optimize', ytdPath, '--out', outputPath, '--max-size', String(maxSize)]);
   if (stdout.includes('SKIPPED')) return null;
   return fs.statSync(outputPath).size;
+}
+
+/** Splits an oversized standalone texture dictionary into multiple valid YTDs without
+ *  recompressing its textures. Mirrors pulseconvert's server-side native pipeline contract:
+ *  null means no split was needed; otherwise the returned paths are the tool's output files. */
+export async function splitYtd(ytdPath: string, outputDir: string, maxBytes: number): Promise<string[] | null> {
+  const tool = resolveRpfToolPath();
+  if (!fs.existsSync(tool)) {
+    throw new Error(`Bundled RPF tool not found at ${tool} - this build may be corrupted, try reinstalling.`);
+  }
+  const stdout = await run(tool, [
+    'ytd-split',
+    ytdPath,
+    '--out-dir',
+    outputDir,
+    '--max-bytes',
+    String(maxBytes),
+    '--max-memory-bytes',
+    String(maxBytes),
+  ]);
+  if (stdout.includes('SKIPPED')) return null;
+  const paths = stdout
+    .split('\n')
+    .map((line) => line.trim())
+    // The tool prints `<path> <file-bytes> <memory-bytes>`. Capture from the right so a
+    // perfectly valid Windows user/temp path containing spaces is not truncated.
+    .map((line) => line.match(/^(.*\.ytd)\s+\d+\s+\d+$/i)?.[1] ?? '')
+    .filter(Boolean);
+  return paths.length > 1 ? paths : null;
 }
 
 /** Same shape as the server's own runBlenderConvert (native.ts), minus the two things that only

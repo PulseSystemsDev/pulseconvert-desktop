@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { pipeline } from 'stream/promises';
 import yauzl from 'yauzl';
 import { safeJoin, ensureDir } from './localStorage';
 import { MAX_ARCHIVE_ENTRIES, formatBytes, MAX_DECOMPRESSED_BYTES } from './localConstants';
@@ -16,9 +17,15 @@ export function extractZip(zipPath: string, destDir: string): Promise<string[]> 
     const extractedPaths: string[] = [];
     let totalBytes = 0;
     let entryCount = 0;
+    let settled = false;
+    const fail = (error: unknown) => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+    };
 
     yauzl.open(zipPath, { lazyEntries: true }, (err, zipfile) => {
-      if (err) return reject(err);
+      if (err) return fail(err);
 
       zipfile.readEntry();
 
@@ -26,13 +33,13 @@ export function extractZip(zipPath: string, destDir: string): Promise<string[]> 
         entryCount += 1;
         if (entryCount > MAX_ARCHIVE_ENTRIES) {
           zipfile.close();
-          return reject(new Error(`Archive has too many entries (>${MAX_ARCHIVE_ENTRIES}) - refusing to extract.`));
+          return fail(new Error(`Archive has too many entries (>${MAX_ARCHIVE_ENTRIES}) - refusing to extract.`));
         }
 
         totalBytes += entry.uncompressedSize;
         if (totalBytes > MAX_DECOMPRESSED_BYTES) {
           zipfile.close();
-          return reject(new Error(`Archive decompresses beyond the configured safety limit (${formatBytes(MAX_DECOMPRESSED_BYTES)}) - refusing to extract.`));
+          return fail(new Error(`Archive decompresses beyond the configured safety limit (${formatBytes(MAX_DECOMPRESSED_BYTES)}) - refusing to extract.`));
         }
 
         let targetPath: string;
@@ -40,7 +47,7 @@ export function extractZip(zipPath: string, destDir: string): Promise<string[]> 
           targetPath = safeJoin(destDir, entry.fileName);
         } catch (e) {
           zipfile.close();
-          return reject(e);
+          return fail(e);
         }
 
         if (/\/$/.test(entry.fileName)) {
@@ -49,27 +56,30 @@ export function extractZip(zipPath: string, destDir: string): Promise<string[]> 
           return;
         }
 
-        zipfile.openReadStream(entry, (streamErr, readStream) => {
+        zipfile.openReadStream(entry, async (streamErr, readStream) => {
           if (streamErr) {
             zipfile.close();
-            return reject(streamErr);
+            return fail(streamErr);
           }
           ensureDir(path.dirname(targetPath));
-          const writeStream = fs.createWriteStream(targetPath);
-          readStream.pipe(writeStream);
-          writeStream.on('finish', () => {
+          try {
+            await pipeline(readStream, fs.createWriteStream(targetPath));
             extractedPaths.push(targetPath);
             zipfile.readEntry();
-          });
-          writeStream.on('error', (writeErr) => {
+          } catch (pipelineError) {
             zipfile.close();
-            reject(writeErr);
-          });
+            fs.rmSync(targetPath, { force: true });
+            fail(pipelineError);
+          }
         });
       });
 
-      zipfile.on('end', () => resolve(extractedPaths));
-      zipfile.on('error', reject);
+      zipfile.on('end', () => {
+        if (settled) return;
+        settled = true;
+        resolve(extractedPaths);
+      });
+      zipfile.on('error', fail);
     });
   });
 }

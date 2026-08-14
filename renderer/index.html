@@ -2,105 +2,408 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'" />
   <title>Pulse Convert Desktop</title>
+  <link rel="stylesheet" href="assets/phosphor.css" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="card">
-    <div class="logo">PC</div>
-
-    <div id="view-signed-out">
-      <h1>Pulse Convert Desktop</h1>
-      <p>Sign in to convert mods using this machine and sync with your Pulse account.</p>
-      <button class="primary" id="btn-sign-in">Sign in with Pulse</button>
-    </div>
-
-    <div id="view-starting" class="hidden">
-      <div class="spinner"></div>
-      <p>Starting sign-in&hellip;</p>
-    </div>
-
-    <div id="view-awaiting" class="hidden">
-      <h1>Link this device</h1>
-      <p>A browser tab will open. If it doesn't, use the button below and enter this code:</p>
-      <code id="user-code">----&#8209;----</code>
-      <button class="primary" id="btn-open-browser">Open in browser</button>
-      <button class="ghost" id="btn-cancel">Cancel</button>
-    </div>
-
-    <div id="view-signed-in" class="hidden">
-      <h1>Convert a mod</h1>
-      <p>Paste a gta5-mods.com, MediaFire, or ShareMods link. Conversion runs on this machine.</p>
-      <input type="text" id="convert-url" placeholder="https://www.gta5-mods.com/vehicles/..." autocomplete="off" />
-      <button class="primary" id="btn-convert">Convert</button>
-
-      <div id="convert-progress" class="hidden">
-        <div class="spinner"></div>
-        <p id="convert-progress-label">Working&hellip;</p>
+  <!--
+    THESIS: A local FiveM processing bench that makes every destructive-looking action legible before it runs, refusing the usual card-dashboard grid.
+    OWN-WORLD: Near-black flat workstation planes, tight ruled dividers, ember controls, verified teal outcomes, square technical icons, Geist copy, and mono measurements.
+    STORY: Choose a real source, declare conversion or optimization intent, inspect machine readiness and the exact plan, run locally, then review or deploy the measured result.
+    FIRST VIEWPORT: A 48px title rail sits above an 80px icon dock, 300px source rail, process path, split configuration and preflight canvas, and a bottom-anchored output action.
+    FORM: Process-led desktop workspace, option 2, seed ab615a0e.
+    FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+  -->
+  <div class="app-shell" id="app-shell" data-authenticated="false">
+    <header class="titlebar">
+      <div class="titlebar-product">
+        <img src="assets/pulseconvert-mark.png" alt="" class="titlebar-mark" />
+        <span>Pulse Convert</span>
+        <span class="titlebar-context" id="titlebar-context">Local workstation</span>
       </div>
-
-      <div id="convert-result" class="hidden">
-        <p class="status-line" id="convert-result-label"></p>
-        <button class="ghost" id="btn-show-in-folder">Show in folder</button>
+      <div class="account-chip" id="account-chip" aria-live="polite">
+        <span id="account-label">Signed out</span>
       </div>
+    </header>
 
-      <div id="convert-error" class="hidden">
-        <p class="error-line" id="convert-error-label"></p>
-      </div>
-
-      <button class="ghost" id="btn-settings">Deploy settings</button>
-      <button class="ghost" id="btn-sign-out">Sign out</button>
-    </div>
-
-    <div id="view-settings" class="hidden">
-      <h1>Deploy settings</h1>
-      <p>Where a converted resource goes automatically. Kept on this device only - never sent to Pulse Convert.</p>
-
-      <select id="deploy-mode">
-        <option value="none">Don't auto-deploy</option>
-        <option value="local">Drop into a local folder</option>
-        <option value="sftp">Upload to a remote server (SFTP)</option>
-      </select>
-
-      <div id="local-fields" class="hidden">
-        <div class="field-row">
-          <input type="text" id="local-folder" placeholder="No folder chosen" readonly />
-          <button class="ghost small" id="btn-choose-folder">Browse&hellip;</button>
+    <div class="app-body">
+      <nav class="dock" aria-label="Primary">
+        <div class="dock-brand" aria-hidden="true">
+          <img src="assets/pulseconvert-mark.png" alt="" />
         </div>
-      </div>
+        <div class="dock-nav">
+          <button class="dock-button" type="button" data-route="convert" aria-label="Convert" title="Convert">
+            <i class="ph ph-arrows-clockwise" aria-hidden="true"></i>
+          </button>
+          <button class="dock-button is-active" type="button" data-route="optimize" aria-label="Optimize" title="Optimize" aria-current="page">
+            <i class="ph ph-stack-simple" aria-hidden="true"></i>
+          </button>
+          <button class="dock-button" type="button" data-route="history" aria-label="Run history" title="Run history">
+            <i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i>
+          </button>
+          <button class="dock-button" type="button" data-route="deploy" aria-label="Deploy" title="Deploy">
+            <i class="ph ph-rocket-launch" aria-hidden="true"></i>
+          </button>
+          <button class="dock-button" type="button" data-route="settings" aria-label="Settings" title="Settings">
+            <i class="ph ph-gear-six" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="dock-footer">
+          <button class="dock-button" type="button" data-route="about" aria-label="About" title="About">
+            <i class="ph ph-info" aria-hidden="true"></i>
+          </button>
+        </div>
+      </nav>
 
-      <div id="sftp-fields" class="hidden">
-        <input type="text" id="sftp-host" placeholder="Host (e.g. 192.168.1.10)" />
-        <input type="text" id="sftp-port" placeholder="Port (default 22)" />
-        <input type="text" id="sftp-username" placeholder="Username" />
-        <input type="password" id="sftp-password" placeholder="Password (leave blank to keep current)" />
-        <input type="text" id="sftp-remote-path" placeholder="Remote resources path, e.g. /home/fxserver/resources" />
-      </div>
+      <aside class="source-rail" id="source-rail">
+        <section class="source-section" aria-labelledby="source-heading">
+          <div class="rail-heading-row">
+            <div>
+              <h2 id="source-heading">Source</h2>
+            </div>
+            <button class="icon-button" id="btn-choose-archive" type="button" aria-label="Choose an archive or stream file" title="Choose archive or file">
+              <i class="ph ph-file-archive" aria-hidden="true"></i>
+            </button>
+          </div>
 
-      <button class="primary" id="btn-save-settings">Save</button>
-      <button class="ghost" id="btn-close-settings">Back</button>
-    </div>
+          <div class="source-picker" id="source-picker">
+            <i class="ph ph-folder-open source-picker-icon" aria-hidden="true"></i>
+            <strong>Choose a resource</strong>
+            <span>Open an archive, stream file, or complete resource folder.</span>
+            <div class="source-picker-actions">
+              <button class="button button-secondary button-small" id="btn-source-file" type="button">Archive or file</button>
+              <button class="button button-quiet button-small" id="btn-source-folder" type="button">Folder</button>
+            </div>
+          </div>
 
-    <div id="view-denied" class="hidden">
-      <h1>Sign-in denied</h1>
-      <p>The sign-in request was denied. You can try again.</p>
-      <button class="primary" id="btn-retry-denied">Try again</button>
-    </div>
+          <article class="selected-source hidden" id="selected-source" aria-live="polite">
+            <div class="selected-source-icon"><i class="ph ph-folder-notch-open" aria-hidden="true"></i></div>
+            <div class="selected-source-copy">
+              <strong id="selected-source-name"></strong>
+              <span id="selected-source-kind"></span>
+              <code id="selected-source-path"></code>
+            </div>
+            <button class="icon-button" id="btn-clear-source" type="button" aria-label="Clear selected source" title="Clear source">
+              <i class="ph ph-x" aria-hidden="true"></i>
+            </button>
+          </article>
+        </section>
 
-    <div id="view-expired" class="hidden">
-      <h1>Code expired</h1>
-      <p>That code expired before it was approved. Start again.</p>
-      <button class="primary" id="btn-retry-expired">Try again</button>
-    </div>
+        <section class="recent-section" aria-labelledby="recent-heading">
+          <div class="rail-heading-row">
+            <div>
+              <h2 id="recent-heading">Recent runs</h2>
+            </div>
+          </div>
+          <div class="empty-rail-state" id="recent-empty">
+            <i class="ph ph-clock" aria-hidden="true"></i>
+            <p>Completed runs will stay here on this device.</p>
+          </div>
+          <ol class="recent-list hidden" id="recent-list"></ol>
+          <button class="rail-link hidden" id="btn-view-all-runs" type="button">
+            <i class="ph ph-list-bullets" aria-hidden="true"></i>
+            <span>View all runs</span>
+            <i class="ph ph-caret-right" aria-hidden="true"></i>
+          </button>
+        </section>
+      </aside>
 
-    <div id="view-error" class="hidden">
-      <h1>Something went wrong</h1>
-      <p id="error-message" class="error-line"></p>
-      <button class="primary" id="btn-retry-error">Try again</button>
+      <main class="workspace" id="workspace">
+        <section class="route-view auth-view" id="auth-view" aria-labelledby="auth-title">
+          <div class="auth-panel">
+            <div class="auth-mark"><img src="assets/pulseconvert-mark.png" alt="" /></div>
+            <h1 id="auth-title">Run Pulse Convert on your machine.</h1>
+            <p class="auth-lede" id="auth-message">Sign in to resolve supported mod links, receive dashboard jobs, and keep processing local.</p>
+            <div class="auth-code hidden" id="auth-code-wrap">
+              <span>Device code</span>
+              <code id="auth-code"></code>
+            </div>
+            <div class="auth-actions">
+              <button class="button button-primary" id="btn-sign-in" type="button">
+                <i class="ph ph-sign-in" aria-hidden="true"></i>
+                <span>Sign in with Pulse</span>
+              </button>
+              <button class="button button-secondary hidden" id="btn-open-browser" type="button">Open sign-in page</button>
+              <button class="button button-quiet hidden" id="btn-cancel-sign-in" type="button">Cancel</button>
+            </div>
+            <p class="auth-footnote">Your conversion sources and native tool paths stay on this device.</p>
+          </div>
+        </section>
+
+        <section class="route-view hidden" id="view-optimize" data-view="optimize" aria-labelledby="optimize-title">
+          <header class="sr-only">
+            <h1 id="optimize-title">Optimize a resource</h1>
+            <span id="readiness-pill" aria-live="polite">Checking tools</span>
+          </header>
+
+          <ol class="process-path" aria-label="Optimization process">
+            <li data-stage="source"><span>1</span><strong>Source</strong></li>
+            <li data-stage="category"><span>2</span><strong>Category</strong></li>
+            <li class="is-active" data-stage="optimize"><span>3</span><strong>Optimize</strong></li>
+            <li data-stage="review"><span>4</span><strong>Review</strong></li>
+            <li data-stage="deploy"><span>5</span><strong>Deploy</strong></li>
+          </ol>
+
+          <div class="optimize-grid">
+            <section class="panel configuration-panel" aria-labelledby="category-heading">
+              <div class="panel-heading">
+                <h2 id="category-heading">Category</h2>
+                <p>Select the resource content that should drive the optimization pass.</p>
+              </div>
+
+              <fieldset class="category-grid">
+                <legend class="sr-only">Resource category</legend>
+                <label class="choice-tile">
+                  <input type="radio" name="optimize-category" value="vehicles" checked />
+                  <span class="choice-check"><i class="ph ph-check" aria-hidden="true"></i></span>
+                  <i class="ph ph-car choice-icon" aria-hidden="true"></i>
+                  <strong>Vehicles</strong>
+                  <small>Stream assets plus vehicle metadata checks.</small>
+                </label>
+                <label class="choice-tile">
+                  <input type="radio" name="optimize-category" value="props" />
+                  <span class="choice-check"><i class="ph ph-check" aria-hidden="true"></i></span>
+                  <i class="ph ph-cube choice-icon" aria-hidden="true"></i>
+                  <strong>Props</strong>
+                  <small>Models, dictionaries, and embedded textures.</small>
+                </label>
+                <label class="choice-tile">
+                  <input type="radio" name="optimize-category" value="clothing" />
+                  <span class="choice-check"><i class="ph ph-check" aria-hidden="true"></i></span>
+                  <i class="ph ph-t-shirt choice-icon" aria-hidden="true"></i>
+                  <strong>Clothing</strong>
+                  <small>Drawable collections and texture dictionaries.</small>
+                </label>
+                <label class="choice-tile">
+                  <input type="radio" name="optimize-category" value="textures" />
+                  <span class="choice-check"><i class="ph ph-check" aria-hidden="true"></i></span>
+                  <i class="ph ph-image-square choice-icon" aria-hidden="true"></i>
+                  <strong>Textures</strong>
+                  <small>A focused YTD split and downscale pass.</small>
+                </label>
+              </fieldset>
+
+              <div class="panel-heading preset-heading">
+                <h2>Preset</h2>
+                <p>Choose the visual-quality and performance balance.</p>
+              </div>
+              <fieldset class="preset-list">
+                <legend class="sr-only">Optimization preset</legend>
+                <label class="preset-choice">
+                  <input type="radio" name="optimize-quality" value="balanced" />
+                  <span class="radio-indicator"></span>
+                  <span><strong>Balanced</strong><small>Retains more texture detail with moderate gains.</small></span>
+                </label>
+                <label class="preset-choice">
+                  <input type="radio" name="optimize-quality" value="performance" checked />
+                  <span class="radio-indicator"></span>
+                  <span><strong>Performance</strong><small>Stronger reductions with limited visual impact.</small></span>
+                </label>
+                <label class="preset-choice">
+                  <input type="radio" name="optimize-quality" value="aggressive" />
+                  <span class="radio-indicator"></span>
+                  <span><strong>Aggressive</strong><small>Prioritizes runtime performance over source fidelity.</small></span>
+                </label>
+              </fieldset>
+            </section>
+
+            <section class="panel preflight-panel" aria-labelledby="preflight-heading">
+              <div class="panel-heading">
+                <h2 id="preflight-heading">Preflight</h2>
+                <p>Live checks and actions based on the current source and preset.</p>
+              </div>
+
+              <div class="ledger-section">
+                <h3>Source</h3>
+                <dl class="ledger" id="preflight-source">
+                  <div><dt>Resource</dt><dd id="preflight-name">No source selected</dd></div>
+                  <div><dt>Type</dt><dd id="preflight-kind">Unknown</dd></div>
+                  <div><dt>Size</dt><dd id="preflight-size">Unknown</dd></div>
+                  <div><dt>Output</dt><dd id="preflight-output">Checking settings</dd></div>
+                </dl>
+              </div>
+
+              <div class="ledger-section">
+                <h3>Tool availability</h3>
+                <ul class="tool-list" id="tool-list">
+                  <li><span>RPF tool</span><span class="status-text is-pending">Checking</span></li>
+                  <li><span>Blender</span><span class="status-text is-pending">Checking</span></li>
+                  <li><span>7-Zip</span><span class="status-text is-pending">Checking</span></li>
+                </ul>
+              </div>
+
+              <div class="ledger-section plan-section">
+                <h3>What will happen</h3>
+                <ul class="plan-list" id="optimization-plan"></ul>
+              </div>
+
+              <div class="preflight-note" id="preflight-note">
+                <i class="ph ph-info" aria-hidden="true"></i>
+                <p>The source is never overwritten. Pulse Convert writes a separate optimized ZIP.</p>
+              </div>
+            </section>
+          </div>
+
+          <section class="run-state hidden" id="optimize-run-state" aria-live="polite">
+            <div class="run-state-heading">
+              <span class="run-state-icon" id="optimize-state-icon"><i class="ph ph-spinner-gap" aria-hidden="true"></i></span>
+              <div><strong id="optimize-state-title">Optimizing resource</strong><span id="optimize-progress-label">Preparing the local pipeline</span></div>
+              <span class="mono" id="optimize-progress-count"></span>
+            </div>
+            <div class="progress-track" aria-hidden="true"><span id="optimize-progress-bar"></span></div>
+            <div class="result-metrics hidden" id="optimize-result-metrics"></div>
+            <details class="fix-log hidden" id="optimize-fix-log">
+              <summary>View processing log <span id="fix-log-count"></span></summary>
+              <ol id="fix-log-list"></ol>
+            </details>
+          </section>
+
+          <footer class="action-row">
+            <div class="output-summary">
+              <span>Output destination</span>
+              <code id="optimize-output-path">Checking settings</code>
+            </div>
+            <button class="button button-primary action-button" id="btn-optimize" type="button" disabled>
+              <i class="ph ph-gear-six" aria-hidden="true"></i>
+              <span>Choose a source</span>
+            </button>
+            <button class="button button-secondary hidden" id="btn-show-optimize-output" type="button">
+              <i class="ph ph-folder-open" aria-hidden="true"></i>
+              <span>Show output</span>
+            </button>
+          </footer>
+        </section>
+
+        <section class="route-view hidden" id="view-convert" data-view="convert" aria-labelledby="convert-title">
+          <header class="workspace-header">
+            <div><h1 id="convert-title">Turn a supported mod link into a FiveM resource.</h1></div>
+          </header>
+          <div class="convert-layout">
+            <section class="panel convert-form-panel">
+              <div class="panel-heading">
+                <h2>Source link</h2>
+                <p>Supported links include GTA5-Mods, MediaFire, and ShareMods.</p>
+              </div>
+              <label class="field-label" for="convert-url">Mod URL</label>
+              <div class="input-with-icon">
+                <i class="ph ph-link" aria-hidden="true"></i>
+                <input id="convert-url" type="url" inputmode="url" autocomplete="off" placeholder="https://www.gta5-mods.com/vehicles/..." />
+              </div>
+
+              <fieldset class="inline-options">
+                <legend>Processing profile</legend>
+                <label><input type="radio" name="convert-profile" value="preserve" checked /><span><strong>Preserve</strong><small>Keep source fidelity and make compatibility fixes.</small></span></label>
+                <label><input type="radio" name="convert-profile" value="performance" /><span><strong>Performance</strong><small>Also reduce oversized and embedded textures.</small></span></label>
+              </fieldset>
+
+              <fieldset class="inline-options">
+                <legend>Resource target</legend>
+                <label><input type="radio" name="convert-target" value="addon" checked /><span><strong>Add-on</strong><small>Install alongside existing vehicles.</small></span></label>
+                <label><input type="radio" name="convert-target" value="replace" /><span><strong>Replacement</strong><small>Replace the matching base-game vehicle.</small></span></label>
+              </fieldset>
+            </section>
+
+            <section class="panel preflight-panel">
+              <div class="panel-heading"><h2>Conversion plan</h2><p>The resolver and local pipeline use these exact choices.</p></div>
+              <ul class="plan-list" id="conversion-plan"></ul>
+              <div class="preflight-note"><i class="ph ph-shield-check" aria-hidden="true"></i><p>Access tokens are sent only to Pulse Convert, never to third-party download hosts.</p></div>
+            </section>
+          </div>
+
+          <section class="run-state hidden" id="convert-run-state" aria-live="polite">
+            <div class="run-state-heading">
+              <span class="run-state-icon" id="convert-state-icon"><i class="ph ph-spinner-gap" aria-hidden="true"></i></span>
+              <div><strong id="convert-state-title">Converting mod</strong><span id="convert-progress-label">Preparing the resolver</span></div>
+            </div>
+            <div class="progress-track" aria-hidden="true"><span id="convert-progress-bar"></span></div>
+            <details class="fix-log hidden" id="convert-fix-log"><summary>View processing log <span id="convert-fix-count"></span></summary><ol id="convert-fix-list"></ol></details>
+          </section>
+
+          <footer class="action-row">
+            <div class="output-summary"><span>Output destination</span><code id="convert-output-path">Checking settings</code></div>
+            <button class="button button-primary action-button" id="btn-convert" type="button">
+              <i class="ph ph-arrows-clockwise" aria-hidden="true"></i><span>Convert resource</span>
+            </button>
+            <button class="button button-secondary hidden" id="btn-show-convert-output" type="button"><i class="ph ph-folder-open" aria-hidden="true"></i><span>Show output</span></button>
+          </footer>
+        </section>
+
+        <section class="route-view hidden" id="view-history" data-view="history" aria-labelledby="history-title">
+          <header class="workspace-header"><div><h1 id="history-title">Results saved on this device.</h1></div><button class="button button-quiet" id="btn-clear-history" type="button">Clear history</button></header>
+          <section class="panel history-panel">
+            <div class="empty-workspace-state" id="history-empty"><i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i><h2>No completed runs yet</h2><p>Your measured conversion and optimization results will appear here.</p></div>
+            <ol class="history-list hidden" id="history-list"></ol>
+          </section>
+        </section>
+
+        <section class="route-view hidden" id="view-deploy" data-view="deploy" aria-labelledby="deploy-title">
+          <header class="workspace-header"><div><h1 id="deploy-title">Choose what happens after a conversion.</h1></div></header>
+          <form class="settings-grid" id="deploy-form">
+            <section class="panel settings-panel">
+              <div class="panel-heading"><h2>Deployment mode</h2><p>These credentials and paths stay on this device.</p></div>
+              <label class="field-label" for="deploy-mode">Destination</label>
+              <select id="deploy-mode">
+                <option value="none">Keep output only</option>
+                <option value="local">Copy into a local resources folder</option>
+                <option value="sftp">Upload to a remote server with SFTP</option>
+              </select>
+              <div id="local-deploy-fields" class="conditional-fields hidden">
+                <label class="field-label" for="local-folder">Local resources folder</label>
+                <div class="field-action"><input id="local-folder" type="text" readonly /><button class="button button-secondary" id="btn-choose-local-folder" type="button">Browse</button></div>
+              </div>
+              <div id="sftp-deploy-fields" class="conditional-fields hidden">
+                <div class="two-column-fields"><label><span>Host</span><input id="sftp-host" type="text" autocomplete="off" /></label><label><span>Port</span><input id="sftp-port" type="number" min="1" max="65535" inputmode="numeric" /></label></div>
+                <label><span>Username</span><input id="sftp-username" type="text" autocomplete="username" /></label>
+                <label><span>Password</span><input id="sftp-password" type="password" autocomplete="new-password" placeholder="Leave blank to keep the saved password" /></label>
+                <label class="checkbox-row"><input id="sftp-clear-password" type="checkbox" /><span>Clear the saved password</span></label>
+                <label><span>Remote resources path</span><input id="sftp-remote-path" type="text" autocomplete="off" /></label>
+              </div>
+            </section>
+            <section class="panel settings-panel supporting-panel">
+              <div class="panel-heading"><h2>Local by default</h2><p>No deployment is required to use the app.</p></div>
+              <ul class="principle-list"><li><i class="ph ph-check-circle" aria-hidden="true"></i><span>The completed ZIP always remains available locally.</span></li><li><i class="ph ph-check-circle" aria-hidden="true"></i><span>SFTP secrets are protected with the operating system key store.</span></li><li><i class="ph ph-check-circle" aria-hidden="true"></i><span>A failed deployment does not discard the conversion result.</span></li></ul>
+            </section>
+          </form>
+          <footer class="action-row"><div class="save-feedback" id="deploy-save-feedback" aria-live="polite"></div><button class="button button-primary action-button" id="btn-save-deploy" type="button"><i class="ph ph-floppy-disk" aria-hidden="true"></i><span>Save deployment</span></button></footer>
+        </section>
+
+        <section class="route-view hidden" id="view-settings" data-view="settings" aria-labelledby="settings-title">
+          <header class="workspace-header"><div><h1 id="settings-title">Outputs and native tools.</h1></div><button class="button button-secondary" id="btn-refresh-readiness" type="button"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i><span>Check again</span></button></header>
+          <form class="settings-grid" id="settings-form">
+            <section class="panel settings-panel">
+              <div class="panel-heading"><h2>Output</h2><p>New conversion and optimization ZIPs are written here.</p></div>
+              <label class="field-label" for="output-folder">Output folder</label>
+              <div class="field-action"><input id="output-folder" type="text" readonly /><button class="button button-secondary" id="btn-choose-output-folder" type="button">Browse</button></div>
+              <div class="panel-heading tool-heading"><h2>Tool overrides</h2><p>Leave a path blank to use the bundled or auto-detected tool.</p></div>
+              <label><span>RPF tool path</span><input id="rpf-tool-path" type="text" autocomplete="off" /></label>
+              <label><span>Blender path</span><input id="blender-path" type="text" autocomplete="off" /></label>
+              <label><span>7-Zip path</span><input id="sevenzip-path" type="text" autocomplete="off" /></label>
+            </section>
+            <section class="panel settings-panel">
+              <div class="panel-heading"><h2>System readiness</h2><p>Checks use read-only information commands and do not change files.</p></div>
+              <div class="readiness-cards" id="settings-readiness"></div>
+            </section>
+          </form>
+          <footer class="action-row"><div class="save-feedback" id="settings-save-feedback" aria-live="polite"></div><button class="button button-primary action-button" id="btn-save-settings" type="button"><i class="ph ph-floppy-disk" aria-hidden="true"></i><span>Save settings</span></button></footer>
+        </section>
+
+        <section class="route-view hidden" id="view-about" data-view="about" aria-labelledby="about-title">
+          <div class="about-panel">
+            <img src="assets/pulseconvert-mark.png" alt="" />
+            <h1 id="about-title">Pulse Convert Desktop</h1>
+            <p>A local conversion and optimization workstation for FiveM resources.</p>
+            <dl><div><dt>Version</dt><dd id="app-version">Unknown</dd></div><div><dt>Platform</dt><dd id="app-platform">Unknown</dd></div><div><dt>Processing</dt><dd>Local machine</dd></div></dl>
+            <button class="button button-quiet" id="btn-sign-out" type="button"><i class="ph ph-sign-out" aria-hidden="true"></i><span>Sign out</span></button>
+          </div>
+        </section>
+      </main>
     </div>
   </div>
 
+  <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
   <script src="renderer.js"></script>
 </body>
 </html>
