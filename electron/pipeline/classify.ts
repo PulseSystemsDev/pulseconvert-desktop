@@ -1,5 +1,15 @@
 import path from 'path';
 
+// Classifies files for BOTH of this app's local pipelines - convertVehicleLocally (a genuine
+// from-scratch conversion, localConvert.ts) and the manual optimize flow (re-processing an
+// already-FiveM-formatted resource, optimizeFlow.ts) - but only the vehicle path actually exists
+// as a from-scratch conversion here. There is no local port of the web app's (../pulseconvert)
+// propify.ts/eupify.ts - convertVehicleLocally rejects any archive with no vehicle signal
+// outright ("only vehicle mods can be converted locally right now"), it fails loudly rather than
+// silently producing a broken prop/EUP resource. Props/clothing only ever appear here via the
+// optimize flow re-processing pre-existing FiveM content, never via generating one from a raw
+// gta5-mods.com archive - see the ytyp and shopPedApparel field comments below for exactly where
+// each is actually populated in this repo.
 export interface ClassifiedFiles {
   yft: string[];
   ytd: string[];
@@ -22,8 +32,14 @@ export interface ClassifiedFiles {
   };
   /** SHOP_PED_APPAREL_META_FILE - registers addon ped clothing/props. Real filenames follow a
    *  per-ped-model/DLC convention (e.g. mp_m_freemode_01_mycollection.meta), too variable to
-   *  reliably auto-detect by name, so this is never populated by classifyFiles - only by
-   *  convertEupPostprocess's own generation step (see eupify.ts). */
+   *  reliably auto-detect by name, so this is never populated here by classifyFiles itself.
+   *  Note this repo's own scope, distinct from the web app (../pulseconvert): there is no local
+   *  "fresh EUP conversion" pipeline in this desktop app at all - convertVehicleLocally
+   *  (localConvert.ts) rejects any archive with no vehicle signal outright ("only vehicle mods
+   *  can be converted locally right now"). The only place this field is ever populated here is
+   *  optimizeFlow.ts's clothing optimize category, which content-sniffs the source archive for
+   *  an already-existing `<ShopPedApparel` meta file and pushes it directly, bypassing
+   *  classifyFiles entirely. */
   shopPedApparel: string[];
   other: string[];
 }
@@ -95,10 +111,12 @@ export function classifyFiles(extractedPaths: string[]): ClassifiedFiles {
         break;
       case 'ytyp':
         // Archetype-definition file (registers prop/object types via the DLC_ITYP_REQUEST
-        // fxmanifest mounter) - see propify.ts, which is what actually generates one for a fresh
-        // props conversion. Classified here too so an archive that already ships its own ytyp
-        // (rare, but possible for a pre-packaged FiveM prop resource run back through the
-        // optimizer) is recognized rather than silently dropped into `other`.
+        // fxmanifest mounter). This desktop app has no local "generate a fresh ytyp for a
+        // from-scratch props conversion" step at all (unlike the web app, ../pulseconvert's
+        // propify.ts - see this file's own top-of-file note on the vehicle-only scope of local
+        // conversion here). Classified here so an archive that already ships its own ytyp (a
+        // pre-packaged FiveM prop resource run back through the optimizer) is recognized rather
+        // than silently dropped into `other`.
         result.ytyp.push(filePath);
         break;
       case 'ymap':
