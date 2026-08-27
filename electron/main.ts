@@ -8,11 +8,13 @@ import { registerThisDevice, getOrCreateDeviceId } from './deviceRegistry';
 import { CommandListener, type DeviceCommand } from './commandListener';
 import { applyConfiguredDeploy } from './deploy/deployFlow';
 import { runLocalOptimize, runManualOptimize } from './optimizeFlow';
+import { desktopFetchJson } from './apiClient';
 import config from './configStore';
 import { clearSftpPassword, loadSftpPassword, saveSftpPassword } from './deploy/sftpCredentialsStore';
-import { getNativeToolsStatus } from './pipeline/localNative';
 import type {
   AuthStatus,
+  CatalogListResponse,
+  CatalogSearchRequest,
   ConversionProfile,
   ConversionTarget,
   ConvertRequest,
@@ -21,10 +23,8 @@ import type {
   OperationProgress,
   OptimizeCategory,
   OptimizeInputKind,
-  OptimizeQuality,
   OptimizeRequest,
   SelectedInput,
-  SystemReadiness,
 } from './types';
 
 log.transports.file.level = 'info';
@@ -34,12 +34,11 @@ const authManager = new AuthManager();
 const approvedOptimizeInputs = new Set<string>();
 const generatedOutputs = new Set<string>();
 const ARCHIVE_EXTENSIONS = new Set(['.zip', '.rar', '.7z', '.oiv', '.rpf']);
-const STANDALONE_EXTENSIONS = new Set(['.ytd', '.yft', '.ydr', '.ydd']);
 const CONVERSION_PROFILES = new Set<ConversionProfile>(['preserve', 'performance']);
 const CONVERSION_TARGETS = new Set<ConversionTarget>(['addon', 'replace']);
 const OPTIMIZE_CATEGORIES = new Set<OptimizeCategory>(['props', 'vehicles', 'clothing', 'textures']);
-const OPTIMIZE_QUALITIES = new Set<OptimizeQuality>(['balanced', 'performance', 'aggressive']);
-const OPTIMIZE_INPUT_KINDS = new Set<OptimizeInputKind>(['archive', 'file', 'folder']);
+const OPTIMIZE_INPUT_KINDS = new Set<OptimizeInputKind>(['archive', 'folder']);
+const CATALOG_KINDS = new Set(['vehicles', 'map', 'ped', 'eup']);
 
 let mainWindow: BrowserWindow | null = null;
 let heavyOperationTail: Promise<void> = Promise.resolve();
@@ -154,9 +153,26 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function normalizeConvertRequest(value: unknown): ConvertRequest {
+function normalizeConvertRequest(value: unknown): ConvertRequest & { inputPath?: string } {
   const raw = typeof value === 'string' ? { url: value, profile: 'preserve', target: 'addon' } : value;
   if (!isRecord(raw)) throw new Error('Invalid conversion request.');
+
+  const profile = raw.profile ?? 'preserve';
+  const target = raw.target ?? 'addon';
+  if (!CONVERSION_PROFILES.has(profile as ConversionProfile)) throw new Error('Invalid conversion profile.');
+  if (!CONVERSION_TARGETS.has(target as ConversionTarget)) throw new Error('Invalid conversion target.');
+
+  if (typeof raw.inputPath === 'string' && raw.inputPath.length > 0) {
+    if (!path.isAbsolute(raw.inputPath)) throw new Error('The selected input must be an absolute local path.');
+    if (!approvedOptimizeInputs.has(pathKey(raw.inputPath))) {
+      throw new Error('Choose this file through Pulse Convert before starting conversion.');
+    }
+    const inputPath = fs.realpathSync(raw.inputPath);
+    const extension = path.extname(inputPath).toLowerCase();
+    if (!ARCHIVE_EXTENSIONS.has(extension)) throw new Error('File-based conversion needs a ZIP, RAR, 7z, OIV, or RPF archive.');
+    return { url: '', profile: profile as ConversionProfile, target: target as ConversionTarget, inputPath };
+  }
+
   if (typeof raw.url !== 'string' || raw.url.trim().length === 0 || raw.url.length > 4096) {
     throw new Error('Enter a valid mod URL first.');
   }
@@ -169,10 +185,6 @@ function normalizeConvertRequest(value: unknown): ConvertRequest {
   if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) {
     throw new Error('Only normal http:// or https:// mod URLs are supported.');
   }
-  const profile = raw.profile ?? 'preserve';
-  const target = raw.target ?? 'addon';
-  if (!CONVERSION_PROFILES.has(profile as ConversionProfile)) throw new Error('Invalid conversion profile.');
-  if (!CONVERSION_TARGETS.has(target as ConversionTarget)) throw new Error('Invalid conversion target.');
   return { url: parsed.href, profile: profile as ConversionProfile, target: target as ConversionTarget };
 }
 
@@ -195,11 +207,10 @@ function pathKey(filePath: string): string {
 function normalizeOptimizeRequest(value: unknown, requirePickerApproval: boolean): OptimizeRequest {
   if (!isRecord(value)) throw new Error('Invalid optimization request.');
   if (typeof value.inputPath !== 'string' || value.inputPath.length === 0 || value.inputPath.length > 32_000) {
-    throw new Error('Choose a local archive, stream file, or resource folder first.');
+    throw new Error('Choose a local archive or resource folder first.');
   }
   if (!OPTIMIZE_INPUT_KINDS.has(value.inputKind as OptimizeInputKind)) throw new Error('Invalid optimization input type.');
   if (!OPTIMIZE_CATEGORIES.has(value.category as OptimizeCategory)) throw new Error('Invalid optimization category.');
-  if (!OPTIMIZE_QUALITIES.has(value.quality as OptimizeQuality)) throw new Error('Invalid optimization quality preset.');
   if (!path.isAbsolute(value.inputPath)) throw new Error('The selected input must be an absolute local path.');
 
   let inputPath: string;
@@ -215,17 +226,15 @@ function normalizeOptimizeRequest(value: unknown, requirePickerApproval: boolean
   const stat = fs.statSync(inputPath);
   const inputKind = value.inputKind as OptimizeInputKind;
   if (inputKind === 'folder' && !stat.isDirectory()) throw new Error('The selected optimization input is not a folder.');
-  if (inputKind !== 'folder' && !stat.isFile()) throw new Error('The selected optimization input is not a file.');
+  if (inputKind === 'archive' && !stat.isFile()) throw new Error('The selected optimization input is not a file.');
   if (stat.isFile() && stat.size > 4 * 1024 * 1024 * 1024) throw new Error('The selected input exceeds the 4 GiB safety limit.');
   const extension = path.extname(inputPath).toLowerCase();
-  if (inputKind === 'file' && !STANDALONE_EXTENSIONS.has(extension)) throw new Error('Standalone input must be .ytd, .yft, .ydr, or .ydd.');
   if (inputKind === 'archive' && !ARCHIVE_EXTENSIONS.has(extension)) throw new Error('Archive input must be ZIP, RAR, 7z, OIV, or RPF.');
 
   return {
     inputPath,
     inputKind,
     category: value.category as OptimizeCategory,
-    quality: value.quality as OptimizeQuality,
   };
 }
 
@@ -242,7 +251,7 @@ async function handleDeviceCommand(command: DeviceCommand): Promise<{ ok: boolea
       payload = command.payload ? JSON.parse(command.payload) : null;
       const request = normalizeRemoteConvertRequest(payload);
       return await serializeHeavyOperation('remote-convert', async () => {
-        const result = await runConvertFlow(request, reportFor('remote-convert'));
+        const result = await runConvertFlow(request, reportFor('remote-convert'), configuredOutputFolder());
         registerOutput(result.outputZipPath);
         const deploy = await applyConfiguredDeploy(result.outputZipPath, result.resourceName);
         return { ok: true, result: { ...result, deploy } };
@@ -257,7 +266,7 @@ async function handleDeviceCommand(command: DeviceCommand): Promise<{ ok: boolea
     if (!folder) return { ok: false, error: 'No local deploy folder is configured on this device yet.' };
     try {
       return await serializeHeavyOperation('remote-optimize', async () => {
-        const summary = await runLocalOptimize(folder, reportFor('remote-optimize'));
+        const summary = await runLocalOptimize(folder, configuredOutputFolder(), reportFor('remote-optimize'));
         for (const output of summary.outputs) registerOutput(output.outputZipPath);
         return { ok: true, result: summary };
       });
@@ -312,7 +321,7 @@ ipcMain.handle('convert:start', async (_event, value: unknown) => {
   try {
     const request = normalizeConvertRequest(value);
     return await serializeHeavyOperation('convert', async () => {
-      const result = await runConvertFlow(request, reportFor('convert'));
+      const result = await runConvertFlow(request, reportFor('convert'), configuredOutputFolder());
       registerOutput(result.outputZipPath);
       const deploy = await applyConfiguredDeploy(result.outputZipPath, result.resourceName);
       return { ok: true, result: { ...result, deploy } };
@@ -327,7 +336,7 @@ ipcMain.handle('optimize:start', async (_event, value: unknown) => {
   try {
     const request = normalizeOptimizeRequest(value, true);
     return await serializeHeavyOperation('optimize', async () => {
-      const result = await runManualOptimize(request, reportFor('optimize'));
+      const result = await runManualOptimize(request, reportFor('optimize'), configuredOutputFolder());
       registerOutput(result.outputZipPath);
       return { ok: true, result };
     });
@@ -349,7 +358,7 @@ ipcMain.handle('input:choose', async (_event, kind: unknown): Promise<SelectedIn
     ? { properties: ['openDirectory'] }
     : {
         properties: ['openFile'],
-        filters: [{ name: 'GTA V resources', extensions: ['zip', 'rar', '7z', 'oiv', 'rpf', 'ytd', 'yft', 'ydr', 'ydd'] }],
+        filters: [{ name: 'GTA V resource archives', extensions: ['zip', 'rar', '7z', 'oiv', 'rpf'] }],
       });
   if (result.canceled || result.filePaths.length !== 1) return null;
 
@@ -358,14 +367,13 @@ ipcMain.handle('input:choose', async (_event, kind: unknown): Promise<SelectedIn
   const extension = path.extname(inputPath).toLowerCase();
   let inputKind: OptimizeInputKind;
   if (stat.isDirectory()) inputKind = 'folder';
-  else if (STANDALONE_EXTENSIONS.has(extension)) inputKind = 'file';
   else if (ARCHIVE_EXTENSIONS.has(extension)) inputKind = 'archive';
   else return null;
   approvedOptimizeInputs.add(pathKey(inputPath));
   return { inputPath, inputKind, name: path.basename(inputPath), sizeBytes: stat.isFile() ? stat.size : null };
 });
 
-// --- Settings / readiness IPC ---
+// --- Settings IPC ---
 
 function currentSettings(): DesktopSettings {
   return {
@@ -376,9 +384,6 @@ function currentSettings(): DesktopSettings {
     sftpUsername: config.get('sftpUsername'),
     sftpRemotePath: config.get('sftpRemotePath'),
     outputFolder: config.get('outputFolder') || defaultOutputFolder(),
-    blenderPath: config.get('blenderPath'),
-    rpfToolPath: config.get('rpfToolPath'),
-    sevenZipPath: config.get('sevenZipPath'),
     hasSftpPassword: loadSftpPassword() !== null,
   };
 }
@@ -396,25 +401,6 @@ function nullableAbsolutePath(value: unknown, fallback: string | null, label: st
   const normalized = nullableString(value, fallback);
   if (normalized !== null && !path.isAbsolute(normalized)) throw new Error(`${label} must be an absolute path.`);
   return normalized;
-}
-
-function executableOverride(
-  value: unknown,
-  fallback: string | null,
-  label: string,
-  allowedNames: string[],
-): string | null {
-  if (value === undefined) return fallback;
-  const executablePath = nullableAbsolutePath(value, fallback, label);
-  if (executablePath === null) return null;
-  const name = path.basename(executablePath).toLowerCase();
-  if (!allowedNames.includes(name)) throw new Error(`${label} does not look like the expected executable.`);
-  try {
-    if (!fs.statSync(executablePath).isFile()) throw new Error();
-  } catch {
-    throw new Error(`${label} does not point to an existing file.`);
-  }
-  return executablePath;
 }
 
 ipcMain.handle('settings:get', (): DesktopSettings => currentSettings());
@@ -439,9 +425,6 @@ ipcMain.handle('settings:save', (_event, value: unknown): { ok: boolean; error?:
       sftpUsername: nullableString(value.sftpUsername, previous.sftpUsername),
       sftpRemotePath: nullableString(value.sftpRemotePath, previous.sftpRemotePath),
       outputFolder,
-      blenderPath: executableOverride(value.blenderPath, previous.blenderPath, 'Blender path', ['blender', 'blender.exe']),
-      rpfToolPath: executableOverride(value.rpfToolPath, previous.rpfToolPath, 'RPF tool path', ['rpf-tool', 'rpf-tool.exe']),
-      sevenZipPath: executableOverride(value.sevenZipPath, previous.sevenZipPath, '7-Zip path', ['7z', '7z.exe', '7za', '7za.exe', '7zz', '7zz.exe']),
     };
     const changesPassword = Object.prototype.hasOwnProperty.call(value, 'sftpPassword') && value.sftpPassword !== undefined;
     if (changesPassword) {
@@ -484,15 +467,29 @@ ipcMain.handle('settings:choose-folder', async () => {
   return result.canceled || result.filePaths.length === 0 ? null : result.filePaths[0];
 });
 
-ipcMain.handle('system:readiness', async (): Promise<SystemReadiness> => {
-  const tools = await getNativeToolsStatus();
-  const outputFolder = configuredOutputFolder();
-  let outputWritable = false;
-  try {
-    fs.accessSync(outputFolder, fs.constants.W_OK);
-    outputWritable = true;
-  } catch {
-    outputWritable = false;
+// --- Catalog IPC ---
+
+ipcMain.handle('catalog:search', async (_event, value: unknown): Promise<CatalogListResponse> => {
+  if (!isRecord(value) || !CATALOG_KINDS.has(String(value.kind))) throw new Error('Invalid catalog search request.');
+  const request = value as unknown as CatalogSearchRequest;
+  const page = Number.isInteger(request.page) && request.page > 0 ? request.page : 1;
+  const search = typeof request.search === 'string' ? request.search.slice(0, 200) : '';
+  const sort = typeof request.sort === 'string' ? request.sort : 'latest';
+  const params = new URLSearchParams({ search, sort, page: String(page), pageSize: '24' });
+  let response: CatalogListResponse;
+  if (request.kind === 'vehicles') {
+    response = await desktopFetchJson<CatalogListResponse>(`/api/catalog/vehicles/list?${params.toString()}`);
+  } else {
+    params.set('kind', request.kind);
+    response = await desktopFetchJson<CatalogListResponse>(`/api/catalog-content/list?${params.toString()}`);
   }
-  return { ready: outputWritable && tools.rpfTool.available, outputFolder, tools };
+
+  const apiBase = config.get('apiBaseUrl').replace(/\/$/, '');
+  return {
+    ...response,
+    entries: response.entries.map((entry) => ({
+      ...entry,
+      thumbnailUrl: entry.thumbnailUrl && entry.thumbnailUrl.startsWith('/') ? `${apiBase}${entry.thumbnailUrl}` : entry.thumbnailUrl,
+    })),
+  };
 });
