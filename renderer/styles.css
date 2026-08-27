@@ -224,13 +224,28 @@ code,
 
 .dock-button {
   position: relative;
-  width: 46px;
-  height: 46px;
-  display: grid;
-  place-items: center;
+  width: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 4px 7px;
   border-radius: var(--radius);
   color: #8f98a6;
-  font-size: 24px;
+}
+
+.dock-button i {
+  font-size: 21px;
+  line-height: 1;
+}
+
+.dock-label {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  text-align: center;
 }
 
 .dock-button:hover {
@@ -1731,6 +1746,10 @@ input[readonly] {
   :root {
     --dock-width: 68px;
     --rail-width: 250px;
+  }
+
+  .dock-button {
+    width: 56px;
   }
 
   .dock-button.is-active::before {
