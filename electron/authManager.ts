@@ -27,10 +27,22 @@ export class AuthManager {
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private signInGeneration = 0;
 
-  constructor() {
+  /** Deliberately does no I/O here - `loadTokens()` calls `safeStorage.isEncryptionAvailable()`,
+   *  which Electron only guarantees to answer correctly after the `app` module's `ready` event has
+   *  fired. This class is constructed at module top-level (main.ts), well before that, so any
+   *  stored-token read has to happen in `initialize()` instead, awaited from inside
+   *  `app.whenReady()`. Until that resolves, status stays the default `signed-out` - safe, since
+   *  nothing can query it before then anyway. */
+  constructor() {}
+
+  /** Call once, after `app.whenReady()` resolves, before creating the renderer window. Reads any
+   *  persisted tokens and moves to `signed-in` via `setStatus()` (not a raw field assignment) so
+   *  the `onStatusChange` listener already registered in main.ts - which starts the command
+   *  listener and forwards the status to the renderer - fires normally on a restored session. */
+  async initialize(): Promise<void> {
     const stored = loadTokens();
     if (stored) {
-      this.status = { state: 'signed-in', discordId: this.discordIdFromToken(stored.accessToken) };
+      this.setStatus({ state: 'signed-in', discordId: this.discordIdFromToken(stored.accessToken) });
       this.scheduleRefresh(stored);
     }
   }

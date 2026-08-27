@@ -261,13 +261,10 @@
   }
 
   function renderConversionPlan() {
-    const profile = selectedValue('convert-profile') || 'preserve';
     const target = selectedValue('convert-target') || 'addon';
     const steps = [
       'Resolve the supported link and reuse an exact matching catalog build when one exists.',
-      profile === 'performance'
-        ? 'Apply compatibility fixes, optimize every YTD, and check embedded model textures.'
-        : 'Apply compatibility fixes while preserving the source texture profile.',
+      'Apply compatibility fixes while preserving the source texture profile.',
       target === 'addon'
         ? 'Build an add-on resource that can live alongside existing vehicles.'
         : 'Build a replacement resource for the matching base-game vehicle.',
@@ -469,7 +466,7 @@
       el('convert-url').focus();
       return showToast('Enter a supported mod URL first.', 'error');
     }
-    const profile = selectedValue('convert-profile');
+    const profile = 'preserve';
     const target = selectedValue('convert-target');
     beginRun('convert', 'Checking the catalog');
     try {
@@ -757,7 +754,7 @@
     for (const input of document.querySelectorAll('input[name="optimize-category"]')) {
       input.addEventListener('change', () => { renderOptimizePlan(); resetOptimizeResult(); });
     }
-    for (const input of document.querySelectorAll('input[name="convert-profile"], input[name="convert-target"]')) {
+    for (const input of document.querySelectorAll('input[name="convert-target"]')) {
       input.addEventListener('change', renderConversionPlan);
     }
 

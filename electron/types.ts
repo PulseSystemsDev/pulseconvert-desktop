@@ -15,7 +15,11 @@ export type AuthStatus =
   | { state: 'expired' }
   | { state: 'error'; message: string };
 
-export type ConversionProfile = 'preserve' | 'performance';
+/** Desktop only ever runs the 'preserve' profile - the 'performance' variant (extra texture
+ *  reduction) was removed from this UI to match the website's ConvertForm, which hardcodes the
+ *  same default; nothing else in this app depends on the other variant. The server's job API
+ *  still accepts 'performance' from other callers (see pulseconvert's schemas.ts). */
+export type ConversionProfile = 'preserve';
 export type ConversionTarget = 'addon' | 'replace';
 export type OptimizeCategory = 'props' | 'vehicles' | 'clothing' | 'textures';
 export type OptimizeInputKind = 'archive' | 'folder';

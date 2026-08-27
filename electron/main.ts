@@ -34,7 +34,7 @@ const authManager = new AuthManager();
 const approvedOptimizeInputs = new Set<string>();
 const generatedOutputs = new Set<string>();
 const ARCHIVE_EXTENSIONS = new Set(['.zip', '.rar', '.7z', '.oiv', '.rpf']);
-const CONVERSION_PROFILES = new Set<ConversionProfile>(['preserve', 'performance']);
+const CONVERSION_PROFILES = new Set<ConversionProfile>(['preserve']);
 const CONVERSION_TARGETS = new Set<ConversionTarget>(['addon', 'replace']);
 const OPTIMIZE_CATEGORIES = new Set<OptimizeCategory>(['props', 'vehicles', 'clothing', 'textures']);
 const OPTIMIZE_INPUT_KINDS = new Set<OptimizeInputKind>(['archive', 'folder']);
@@ -106,11 +106,15 @@ function createWindow(): void {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   log.info('Pulse Convert Desktop ready, version', app.getVersion());
   initializeOutputFolder();
+  // Must resolve before createWindow(): safeStorage (and therefore any persisted sign-in) is only
+  // reliably readable after this point, and the renderer queries auth:get-status as soon as it
+  // loads. authManager's onStatusChange listener (registered below) starts the command listener
+  // itself once this restores a signed-in session, so no explicit check is needed here.
+  await authManager.initialize();
   createWindow();
-  if (authManager.getStatus().state === 'signed-in') startCommandListener();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
