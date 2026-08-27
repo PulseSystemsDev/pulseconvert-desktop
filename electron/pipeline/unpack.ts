@@ -5,12 +5,6 @@ import yauzl from 'yauzl';
 import { safeJoin, ensureDir } from './localStorage';
 import { MAX_ARCHIVE_ENTRIES, formatBytes, MAX_DECOMPRESSED_BYTES } from './localConstants';
 
-/**
- * Extracts a zip (or .oiv, which is just a zip/7z with an assembly.xml) into destDir.
- * Guards against zip-slip (entry paths escaping destDir) and zip-bombs (total decompressed
- * size or entry count far beyond anything a real vehicle mod would need) - this runs against
- * arbitrary public uploads, so both checks happen before any bytes are written.
- */
 export function extractZip(zipPath: string, destDir: string): Promise<string[]> {
   return new Promise((resolve, reject) => {
     ensureDir(destDir);

@@ -2,16 +2,6 @@ import { app, safeStorage } from 'electron';
 import fs from 'fs';
 import path from 'path';
 
-/**
- * An SFTP password is exactly as sensitive as the OAuth refresh token tokenStore.ts protects -
- * same safeStorage (OS keychain/DPAPI) treatment, deliberately kept in its own file rather than
- * folded into configStore.ts's plain-JSON electron-store, which holds the non-secret parts of
- * the same deploy settings (host/port/username/remote path - see configStore.ts). Per the
- * project's Phase D design decision, this password is configured directly on this device and
- * never transmitted to or stored by PulseConvert's own servers - a dashboard-queued
- * "convert_and_deploy" command only ever carries a mod URL, never credentials.
- */
-
 function credentialsFilePath(): string {
   return path.join(app.getPath('userData'), 'sftp-credentials.enc');
 }

@@ -5,12 +5,6 @@ import type { TokenSet } from './types';
 
 const REFRESH_SKEW_MS = 60_000;
 
-/** Standalone from authManager.ts on purpose - authManager owns the *renderer-facing* sign-in
- *  state machine and its own refresh-scheduling timer, while this just needs "give me a token
- *  that's valid right now" for an outgoing API call, including an on-demand refresh if the
- *  scheduled background one hasn't fired yet (e.g. right after the app cold-starts with a
- *  slightly-stale stored token). Both read/write the same tokenStore.ts file, so they can never
- *  disagree about the current token for long. */
 async function getValidAccessToken(): Promise<string> {
   const tokens = loadTokens();
   if (!tokens) throw new Error('Not signed in.');
@@ -43,9 +37,6 @@ export class ApiError extends Error {
   }
 }
 
-/** Bearer-authenticated fetch against pulseconvert's own API (apiBaseUrl) - the same routes the
- *  website itself calls, now reachable from this desktop client because apiAuth.ts's
- *  requireUser() accepts this exact token shape (see pulseconvert's src/lib/apiAuth.ts). */
 export async function desktopFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const token = await getValidAccessToken();
   const url = path.startsWith('http') ? path : `${config.get('apiBaseUrl')}${path}`;

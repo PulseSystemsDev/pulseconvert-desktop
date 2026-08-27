@@ -36,11 +36,6 @@ export interface ConvertFlowResult {
   fromCache: boolean;
 }
 
-/** Scales a bytes-sent/total-bytes upload progress into the first half of the bar, and a
- *  server job's current/total into the second half, so the existing renderer progress-bar math
- *  ((current/total)*100%) works unmodified while a file-based run shows one continuous bar
- *  across "uploading" then "converting on the server." A URL-based run never has an upload
- *  phase, so it just forwards progress at its natural scale. */
 function twoPhaseProgress(onProgress: (label: string, current?: number, total?: number) => void) {
   return {
     upload: (label: string, current: number, total: number) => onProgress(label, Math.round((current / total) * 50), 100),

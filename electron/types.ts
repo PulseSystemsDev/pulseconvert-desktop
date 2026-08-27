@@ -1,7 +1,7 @@
 export interface TokenSet {
   accessToken: string;
   refreshToken: string | null;
-  /** Unix ms timestamp computed from the token response's expires_in value. */
+
   accessTokenExpiresAt: number;
   scope: string;
 }
@@ -15,10 +15,6 @@ export type AuthStatus =
   | { state: 'expired' }
   | { state: 'error'; message: string };
 
-/** Desktop only ever runs the 'preserve' profile - the 'performance' variant (extra texture
- *  reduction) was removed from this UI to match the website's ConvertForm, which hardcodes the
- *  same default; nothing else in this app depends on the other variant. The server's job API
- *  still accepts 'performance' from other callers (see pulseconvert's schemas.ts). */
 export type ConversionProfile = 'preserve';
 export type ConversionTarget = 'addon' | 'replace';
 export type OptimizeCategory = 'props' | 'vehicles' | 'clothing' | 'textures';
@@ -28,9 +24,6 @@ export type ProgressOperation = 'convert' | 'optimize' | 'remote-convert' | 'rem
 
 export type JobStatus = 'scraping' | 'queued' | 'processing' | 'done' | 'failed';
 
-/** Mirrors pulseconvert's buildJobStatusPayload() (src/lib/queue.ts) verbatim - the desktop app
- *  polls GET /api/jobs/:id for this shape instead of using the website's SSE route, since that
- *  route only accepts a browser session cookie and EventSource can't carry a bearer header. */
 export interface JobStatusPayload {
   status: JobStatus;
   queuePosition: number;
@@ -95,7 +88,7 @@ export interface DesktopSettings extends DeploySettings {
 }
 
 export type SaveDesktopSettings = Omit<DesktopSettings, 'hasSftpPassword'> & {
-  /** Omitted means retain the stored secret; an explicit blank string clears it. */
+
   sftpPassword?: string;
 };
 
@@ -164,7 +157,6 @@ export interface CatalogSearchRequest {
   page: number;
 }
 
-/** Narrow contextBridge surface exposed to the sandboxed renderer. */
 export interface PulseConvertDesktopAPI {
   platform: string;
   version: string;

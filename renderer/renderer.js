@@ -40,7 +40,6 @@
     try {
       localStorage.setItem(HISTORY_KEY, JSON.stringify(state.history.slice(0, MAX_HISTORY)));
     } catch {
-      // A run remains usable even if local history storage is unavailable.
     }
   }
 

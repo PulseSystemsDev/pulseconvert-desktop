@@ -12,16 +12,6 @@ export interface DeviceCommand {
 
 type CommandHandler = (command: DeviceCommand) => Promise<{ ok: boolean; result?: unknown; error?: string }>;
 
-/**
- * Consumes the device's own SSE stream (devices/[id]/events) manually rather than via the
- * `EventSource` global - that's a browser/renderer API, not available in the Electron main
- * process, which is where this needs to run to reach fs/child_process for actually executing a
- * command. Node 22's native fetch() gives a real ReadableStream body, which is all SSE actually
- * needs: parse `data: <json>\n\n` frames off the wire by hand. Reconnects with a short backoff on
- * any drop (network blip, server restart, laptop sleep/wake) - this connection is meant to stay
- * open indefinitely for as long as the app runs, per the plan's "agent holds a persistent
- * outbound connection" design.
- */
 export class CommandListener {
   private deviceId: string;
   private handler: CommandHandler;
@@ -63,8 +53,7 @@ export class CommandListener {
   private async connectOnce(generation: number): Promise<void> {
     const tokens = loadTokens();
     if (!tokens) {
-      // Not signed in yet - back off longer than the standard reconnect delay so this doesn't
-      // spin hot while the sign-in screen is up.
+
       await new Promise((resolve) => setTimeout(resolve, 10_000));
       return;
     }

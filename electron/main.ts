@@ -11,6 +11,7 @@ import { runLocalOptimize, runManualOptimize } from './optimizeFlow';
 import { desktopFetchJson } from './apiClient';
 import config from './configStore';
 import { clearSftpPassword, loadSftpPassword, saveSftpPassword } from './deploy/sftpCredentialsStore';
+import { setupUpdater } from './updater';
 import type {
   AuthStatus,
   CatalogListResponse,
@@ -109,12 +110,10 @@ function createWindow(): void {
 app.whenReady().then(async () => {
   log.info('Pulse Convert Desktop ready, version', app.getVersion());
   initializeOutputFolder();
-  // Must resolve before createWindow(): safeStorage (and therefore any persisted sign-in) is only
-  // reliably readable after this point, and the renderer queries auth:get-status as soon as it
-  // loads. authManager's onStatusChange listener (registered below) starts the command listener
-  // itself once this restores a signed-in session, so no explicit check is needed here.
+
   await authManager.initialize();
   createWindow();
+  setupUpdater(() => mainWindow);
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -133,7 +132,6 @@ function reportFor(operation: OperationProgress['operation']) {
   return (label: string, current?: number, total?: number) => emitProgress({ operation, label, current, total });
 }
 
-/** One queue protects CPU-heavy native/Blender work from manual and dashboard command overlap. */
 function serializeHeavyOperation<T>(operation: OperationProgress['operation'], task: () => Promise<T>): Promise<T> {
   if (pendingHeavyOperations > 0) emitProgress({ operation, label: 'Queued behind the current operation' });
   pendingHeavyOperations += 1;
@@ -246,8 +244,6 @@ function registerOutput(filePath: string): void {
   generatedOutputs.add(pathKey(filePath));
 }
 
-// --- Remote commands ---
-
 async function handleDeviceCommand(command: DeviceCommand): Promise<{ ok: boolean; result?: unknown; error?: string }> {
   if (command.type === 'convert_and_deploy') {
     let payload: unknown;
@@ -284,8 +280,6 @@ async function handleDeviceCommand(command: DeviceCommand): Promise<{ ok: boolea
 
 const commandListener = new CommandListener(getOrCreateDeviceId(), handleDeviceCommand);
 
-// --- Auth IPC ---
-
 function startCommandListener(): void {
   if (commandListenerActive || !app.isReady()) return;
   commandListenerActive = true;
@@ -318,8 +312,6 @@ ipcMain.on('shell:open-external', (_event, value: unknown) => {
     // Ignore malformed/untrusted renderer input.
   }
 });
-
-// --- Convert / optimize IPC ---
 
 ipcMain.handle('convert:start', async (_event, value: unknown) => {
   try {
@@ -376,8 +368,6 @@ ipcMain.handle('input:choose', async (_event, kind: unknown): Promise<SelectedIn
   approvedOptimizeInputs.add(pathKey(inputPath));
   return { inputPath, inputKind, name: path.basename(inputPath), sizeBytes: stat.isFile() ? stat.size : null };
 });
-
-// --- Settings IPC ---
 
 function currentSettings(): DesktopSettings {
   return {
@@ -470,8 +460,6 @@ ipcMain.handle('settings:choose-folder', async () => {
   const result = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory', 'createDirectory'] });
   return result.canceled || result.filePaths.length === 0 ? null : result.filePaths[0];
 });
-
-// --- Catalog IPC ---
 
 ipcMain.handle('catalog:search', async (_event, value: unknown): Promise<CatalogListResponse> => {
   if (!isRecord(value) || !CATALOG_KINDS.has(String(value.kind))) throw new Error('Invalid catalog search request.');

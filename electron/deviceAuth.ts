@@ -1,20 +1,13 @@
-/**
- * Low-level RFC 8628 (OAuth 2.0 Device Authorization Grant) HTTP client against Pulse Accounts.
- * No client secret anywhere here - pulseconvert-desktop is registered as a public client (see
- * PulseAccounts/packages/db/src/seedClients.ts), which is the whole point of this grant: a
- * distributed app has nowhere safe to keep a static secret. Endpoint paths are oidc-provider's
- * own defaults (verified by reading the installed package, not assumed) - PulseAccounts'
- * provider.ts never overrides `routes`, so `/device/auth` and `/token` apply as-is.
- */
+
 
 export interface DeviceAuthorizationResponse {
   deviceCode: string;
   userCode: string;
   verificationUri: string;
   verificationUriComplete: string;
-  /** Unix ms this device code stops being pollable. */
+
   expiresAt: number;
-  /** Seconds to wait between poll attempts - respected, and bumped on a `slow_down` response. */
+
   intervalSeconds: number;
 }
 
@@ -62,8 +55,6 @@ export interface TokenResponse {
   scope: string;
 }
 
-/** Single poll attempt against the token endpoint - the caller (authManager.ts) owns the
- *  interval/backoff loop so it can be cancelled cleanly from a "sign-in cancelled" action. */
 export async function pollDeviceToken(issuer: string, clientId: string, deviceCode: string): Promise<TokenResponse | { pending: true } | { slowDown: true }> {
   const res = await fetch(`${normalizeIssuer(issuer)}/token`, {
     method: 'POST',

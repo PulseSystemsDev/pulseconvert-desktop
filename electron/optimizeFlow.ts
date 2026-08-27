@@ -48,10 +48,6 @@ function removeWorkDir(workDir: string): void {
   if (resolved.startsWith(base + path.sep)) fs.rmSync(resolved, { recursive: true, force: true });
 }
 
-/** Manual optimize entry point. A folder input is zipped locally first (a plain recursive zip,
- *  no native tool) since the server's upload endpoint only accepts a single archive file - the
- *  actual optimization work (YTD splitting/downscaling, metadata checks, Blender embedded-texture
- *  pass) all now happens server-side, identical to the website's own optimize flow. */
 export async function runManualOptimize(
   request: OptimizeRequest,
   onProgress: (label: string, current?: number, total?: number) => void,
@@ -98,9 +94,6 @@ function detectResourceCategory(resourceFolder: string): OptimizeCategory {
   return 'textures';
 }
 
-/** Dashboard-command entry point: scans a locally deployed folder for resource subfolders (each
- *  one identified by having a "stream" directory) and runs each through the same server-backed
- *  optimize path as the manual flow, one at a time. */
 export async function runLocalOptimize(
   targetFolder: string,
   outputFolder: string,
