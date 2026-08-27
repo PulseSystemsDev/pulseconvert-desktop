@@ -7,9 +7,6 @@ interface UploadInitResponse {
   chunkSize: number;
 }
 
-/** Chunked upload against pulseconvert's existing /api/upload/* routes - the same ones the
- *  website's own file-based convert/optimize forms use. Reports progress in bytes so the caller
- *  can scale it into whatever fraction of the overall progress bar this upload phase represents. */
 export async function uploadLocalFile(
   filePath: string,
   onProgress: (bytesSent: number, totalBytes: number) => void,

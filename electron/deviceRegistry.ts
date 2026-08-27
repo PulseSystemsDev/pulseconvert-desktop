@@ -12,9 +12,6 @@ export function getOrCreateDeviceId(): string {
   return id;
 }
 
-/** Best-effort, called once per app session right after sign-in completes (see main.ts) - a
- *  failure here just means the dashboard's device list is stale until the next successful call,
- *  never blocks the user from converting locally. */
 export async function registerThisDevice(): Promise<void> {
   const deviceId = getOrCreateDeviceId();
   try {

@@ -4,15 +4,6 @@ import path from 'path';
 import log from 'electron-log';
 import type { TokenSet } from './types';
 
-/**
- * Encrypted-at-rest token persistence via Electron's `safeStorage` (OS keychain/DPAPI-backed),
- * not `electron-store`'s own plain JSON - a refresh token is a real, standing credential (30-day
- * TTL, matches PulseAccounts' RefreshToken TTL in accounts/src/provider.ts) and deserves OS-level
- * protection, not just "not committed to git." electron-store handles the CAD desktop client's
- * config today (window layout, server URL) with no encryption because none of that is sensitive -
- * this is a deliberately different, stricter storage path for exactly that reason.
- */
-
 function tokenFilePath(): string {
   return path.join(app.getPath('userData'), 'tokens.enc');
 }

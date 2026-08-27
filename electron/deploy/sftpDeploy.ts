@@ -13,23 +13,12 @@ export interface SftpTarget {
   remotePath: string;
 }
 
-/**
- * Deploys a converted resource to a remote game server over SFTP - for the common case where the
- * FXServer is a separate rented box, not the same machine running this desktop app. Extracts the
- * zip locally first (same extractZip used by localDeploy.ts), then uploads the resulting folder
- * tree with ssh2-sftp-client's own recursive uploadDir - no server-side unzip dependency assumed.
- */
 export async function deployToSftp(zipPath: string, resourceName: string, target: SftpTarget): Promise<string> {
   const localExtractDir = path.join(os.tmpdir(), 'pulseconvert-desktop-sftp', `${resourceName}-${Date.now()}`);
   const client = new SftpClient();
   try {
     await extractZip(zipPath, localExtractDir);
 
-    // Pulse Convert bundles normally contain one top-level `<resourceName>/` directory. Uploading
-    // the extraction root into a remote directory with that same name produces
-    // `<resourceName>/<resourceName>/fxmanifest.lua`. Upload the actual resource directory when the
-    // ZIP has that standard shape; cached catalog artifacts with a single differently named root
-    // receive the same treatment. A flat/multi-root archive still uploads from its extraction root.
     const expectedResourceDir = path.join(localExtractDir, resourceName);
     let localUploadDir = localExtractDir;
     if (fs.existsSync(expectedResourceDir) && fs.statSync(expectedResourceDir).isDirectory()) {
@@ -41,11 +30,6 @@ export async function deployToSftp(zipPath: string, resourceName: string, target
       }
     }
 
-    // Trust-on-first-use host key pinning (sftpHostKeyStore.ts) - previously no hostVerifier at
-    // all was passed here, so ssh2 accepted whatever key any server presented, unconditionally,
-    // on every connection. hostKeyMismatch is populated (not thrown directly) because ssh2's
-    // hostVerifier callback can only return a boolean; the actual descriptive error is thrown
-    // below, once connect() has rejected because of it.
     let hostKeyMismatch: { pinned: string; presented: string } | null = null;
     await client.connect({
       host: target.host,

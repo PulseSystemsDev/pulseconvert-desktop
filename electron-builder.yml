@@ -13,7 +13,7 @@ files:
 
 publish:
   provider: github
-  owner: YesYesTheDev
+  owner: PulseSystemsDev
   repo: pulseconvert-desktop
 
 win:

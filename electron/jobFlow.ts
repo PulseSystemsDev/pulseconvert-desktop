@@ -12,9 +12,6 @@ const POLL_INTERVAL_MS = 2000;
 
 export class JobFailedError extends Error {}
 
-/** Only attaches our own bearer token when downloading from pulseconvert itself (a relative path,
- *  or an absolute URL on the same origin as apiBaseUrl) - a resolved gta5mods.com/mediafire/
- *  sharemods download URL is a third party and must never see this app's access token. */
 export async function downloadToFile(url: string, destPath: string): Promise<void> {
   const apiBase = config.get('apiBaseUrl');
   const apiOrigin = new URL(apiBase).origin;
@@ -76,9 +73,6 @@ function labelFor(payload: JobStatusPayload): string {
   return payload.progress.label ?? 'Processing on the server';
 }
 
-/** Polls GET /api/jobs/:id instead of the website's SSE route - that route only accepts a browser
- *  session cookie (`await auth()`), not this app's bearer token, and EventSource can't attach a
- *  custom Authorization header anyway. */
 export async function pollJobUntilDone(
   jobId: string,
   onProgress: (label: string, current?: number, total?: number) => void,
@@ -103,18 +97,12 @@ export async function downloadJobOutput(job: JobRecord, destPath: string): Promi
   await downloadToFile(job.downloadUrl, destPath);
 }
 
-/** Best-effort, fire-and-forget. Only used to reconfirm the safe archive formats gate before
- *  submitting a job that must have an uploadId (optimize, and file-based convert). */
 export function assertNotRateLimited(err: unknown): void {
   if (err instanceof ApiError && (err.status === 429 || err.status === 409)) {
     throw new Error(err.message);
   }
 }
 
-/** Zips a folder's contents (recursively, preserving relative structure) into a fresh archive -
- *  used only by the dashboard's remote run_optimize command, which hands this a pre-existing
- *  unpacked resource folder that needs to become an uploadable archive. Pure Node zip (yazl),
- *  no native tool involved. */
 export function zipFolder(sourceDir: string, outputZipPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const zip = new yazl.ZipFile();
