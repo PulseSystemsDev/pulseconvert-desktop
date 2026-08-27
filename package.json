@@ -1,6 +1,6 @@
 {
   "name": "pulseconvert-desktop",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Pulse Convert desktop client - converts GTA5 mods using your own machine's compute instead of the server's",
   "author": "Pulse Systems <support@pulsesystems.dev>",
   "main": "dist/electron/main.js",
