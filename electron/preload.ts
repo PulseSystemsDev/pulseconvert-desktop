@@ -1,6 +1,8 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type {
   AuthStatus,
+  CatalogListResponse,
+  CatalogSearchRequest,
   ConvertOutcome,
   ConvertRequest,
   DesktopSettings,
@@ -10,7 +12,6 @@ import type {
   OptimizeRequest,
   SaveDesktopSettings,
   SelectedInput,
-  SystemReadiness,
 } from './types';
 
 contextBridge.exposeInMainWorld('pulseConvertDesktop', {
@@ -42,5 +43,5 @@ contextBridge.exposeInMainWorld('pulseConvertDesktop', {
   saveSettings: (settings: SaveDesktopSettings) => ipcRenderer.invoke('settings:save', settings),
   chooseFolder: (): Promise<string | null> => ipcRenderer.invoke('settings:choose-folder'),
   chooseInput: (kind: InputPickerKind): Promise<SelectedInput | null> => ipcRenderer.invoke('input:choose', kind),
-  getSystemReadiness: (): Promise<SystemReadiness> => ipcRenderer.invoke('system:readiness'),
+  searchCatalog: (request: CatalogSearchRequest): Promise<CatalogListResponse> => ipcRenderer.invoke('catalog:search', request),
 });

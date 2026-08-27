@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://convert.pulsesystems.dev; style-src 'self'; script-src 'self'" />
   <title>Pulse Convert Desktop</title>
   <link rel="stylesheet" href="assets/phosphor.css" />
   <link rel="stylesheet" href="styles.css" />
@@ -22,7 +22,7 @@
       <div class="titlebar-product">
         <img src="assets/pulseconvert-mark.png" alt="" class="titlebar-mark" />
         <span>Pulse Convert</span>
-        <span class="titlebar-context" id="titlebar-context">Local workstation</span>
+        <span class="titlebar-context" id="titlebar-context">Signed out</span>
       </div>
       <div class="account-chip" id="account-chip" aria-live="polite">
         <span id="account-label">Signed out</span>
@@ -40,6 +40,9 @@
           </button>
           <button class="dock-button is-active" type="button" data-route="optimize" aria-label="Optimize" title="Optimize" aria-current="page">
             <i class="ph ph-stack-simple" aria-hidden="true"></i>
+          </button>
+          <button class="dock-button" type="button" data-route="catalog" aria-label="Catalog" title="Catalog">
+            <i class="ph ph-squares-four" aria-hidden="true"></i>
           </button>
           <button class="dock-button" type="button" data-route="history" aria-label="Run history" title="Run history">
             <i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i>
@@ -64,7 +67,7 @@
             <div>
               <h2 id="source-heading">Source</h2>
             </div>
-            <button class="icon-button" id="btn-choose-archive" type="button" aria-label="Choose an archive or stream file" title="Choose archive or file">
+            <button class="icon-button" id="btn-choose-archive" type="button" aria-label="Choose an archive" title="Choose archive">
               <i class="ph ph-file-archive" aria-hidden="true"></i>
             </button>
           </div>
@@ -72,9 +75,9 @@
           <div class="source-picker" id="source-picker">
             <i class="ph ph-folder-open source-picker-icon" aria-hidden="true"></i>
             <strong>Choose a resource</strong>
-            <span>Open an archive, stream file, or complete resource folder.</span>
+            <span>Open an archive or complete resource folder.</span>
             <div class="source-picker-actions">
-              <button class="button button-secondary button-small" id="btn-source-file" type="button">Archive or file</button>
+              <button class="button button-secondary button-small" id="btn-source-file" type="button">Archive</button>
               <button class="button button-quiet button-small" id="btn-source-folder" type="button">Folder</button>
             </div>
           </div>
@@ -115,8 +118,8 @@
         <section class="route-view auth-view" id="auth-view" aria-labelledby="auth-title">
           <div class="auth-panel">
             <div class="auth-mark"><img src="assets/pulseconvert-mark.png" alt="" /></div>
-            <h1 id="auth-title">Run Pulse Convert on your machine.</h1>
-            <p class="auth-lede" id="auth-message">Sign in to resolve supported mod links, receive dashboard jobs, and keep processing local.</p>
+            <h1 id="auth-title">Convert and optimize without a browser.</h1>
+            <p class="auth-lede" id="auth-message">Sign in to browse the catalog, submit conversions and optimizations to Pulse Convert, and receive dashboard jobs.</p>
             <div class="auth-code hidden" id="auth-code-wrap">
               <span>Device code</span>
               <code id="auth-code"></code>
@@ -129,14 +132,13 @@
               <button class="button button-secondary hidden" id="btn-open-browser" type="button">Open sign-in page</button>
               <button class="button button-quiet hidden" id="btn-cancel-sign-in" type="button">Cancel</button>
             </div>
-            <p class="auth-footnote">Your conversion sources and native tool paths stay on this device.</p>
+            <p class="auth-footnote">Files you convert or optimize are uploaded securely to Pulse Convert to be processed there.</p>
           </div>
         </section>
 
         <section class="route-view hidden" id="view-optimize" data-view="optimize" aria-labelledby="optimize-title">
           <header class="sr-only">
             <h1 id="optimize-title">Optimize a resource</h1>
-            <span id="readiness-pill" aria-live="polite">Checking tools</span>
           </header>
 
           <ol class="process-path" aria-label="Optimization process">
@@ -185,29 +187,6 @@
                   <small>A focused YTD split and downscale pass.</small>
                 </label>
               </fieldset>
-
-              <div class="panel-heading preset-heading">
-                <h2>Preset</h2>
-                <p>Choose the visual-quality and performance balance.</p>
-              </div>
-              <fieldset class="preset-list">
-                <legend class="sr-only">Optimization preset</legend>
-                <label class="preset-choice">
-                  <input type="radio" name="optimize-quality" value="balanced" />
-                  <span class="radio-indicator"></span>
-                  <span><strong>Balanced</strong><small>Retains more texture detail with moderate gains.</small></span>
-                </label>
-                <label class="preset-choice">
-                  <input type="radio" name="optimize-quality" value="performance" checked />
-                  <span class="radio-indicator"></span>
-                  <span><strong>Performance</strong><small>Stronger reductions with limited visual impact.</small></span>
-                </label>
-                <label class="preset-choice">
-                  <input type="radio" name="optimize-quality" value="aggressive" />
-                  <span class="radio-indicator"></span>
-                  <span><strong>Aggressive</strong><small>Prioritizes runtime performance over source fidelity.</small></span>
-                </label>
-              </fieldset>
             </section>
 
             <section class="panel preflight-panel" aria-labelledby="preflight-heading">
@@ -224,15 +203,6 @@
                   <div><dt>Size</dt><dd id="preflight-size">Unknown</dd></div>
                   <div><dt>Output</dt><dd id="preflight-output">Checking settings</dd></div>
                 </dl>
-              </div>
-
-              <div class="ledger-section">
-                <h3>Tool availability</h3>
-                <ul class="tool-list" id="tool-list">
-                  <li><span>RPF tool</span><span class="status-text is-pending">Checking</span></li>
-                  <li><span>Blender</span><span class="status-text is-pending">Checking</span></li>
-                  <li><span>7-Zip</span><span class="status-text is-pending">Checking</span></li>
-                </ul>
               </div>
 
               <div class="ledger-section plan-section">
@@ -307,7 +277,7 @@
             </section>
 
             <section class="panel preflight-panel">
-              <div class="panel-heading"><h2>Conversion plan</h2><p>The resolver and local pipeline use these exact choices.</p></div>
+              <div class="panel-heading"><h2>Conversion plan</h2><p>The resolver and server pipeline use these exact choices.</p></div>
               <ul class="plan-list" id="conversion-plan"></ul>
               <div class="preflight-note"><i class="ph ph-shield-check" aria-hidden="true"></i><p>Access tokens are sent only to Pulse Convert, never to third-party download hosts.</p></div>
             </section>
@@ -329,6 +299,44 @@
             </button>
             <button class="button button-secondary hidden" id="btn-show-convert-output" type="button"><i class="ph ph-folder-open" aria-hidden="true"></i><span>Show output</span></button>
           </footer>
+        </section>
+
+        <section class="route-view hidden" id="view-catalog" data-view="catalog" aria-labelledby="catalog-title">
+          <header class="workspace-header"><div><h1 id="catalog-title">Browse the Pulse Convert catalog.</h1></div></header>
+
+          <div class="catalog-controls">
+            <div class="catalog-tabs" role="tablist" aria-label="Catalog kind">
+              <button class="catalog-tab is-active" type="button" data-kind="vehicles" role="tab" aria-selected="true">Vehicles</button>
+              <button class="catalog-tab" type="button" data-kind="map" role="tab" aria-selected="false">Maps</button>
+              <button class="catalog-tab" type="button" data-kind="ped" role="tab" aria-selected="false">Peds</button>
+              <button class="catalog-tab" type="button" data-kind="eup" role="tab" aria-selected="false">EUP</button>
+            </div>
+            <div class="input-with-icon catalog-search">
+              <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+              <input id="catalog-search" type="search" placeholder="Search the catalog" autocomplete="off" />
+            </div>
+            <select id="catalog-sort" aria-label="Sort catalog">
+              <option value="latest">Latest</option>
+              <option value="likes">Most liked</option>
+              <option value="downloads">Most downloaded</option>
+              <option value="rating">Highest rated</option>
+            </select>
+          </div>
+
+          <section class="panel catalog-panel">
+            <div class="empty-workspace-state hidden" id="catalog-empty">
+              <i class="ph ph-squares-four" aria-hidden="true"></i>
+              <h2>No matching entries</h2>
+              <p>Try a different search term or catalog kind.</p>
+            </div>
+            <div class="catalog-grid hidden" id="catalog-grid"></div>
+          </section>
+
+          <div class="catalog-pagination hidden" id="catalog-pagination">
+            <button class="button button-secondary button-small" id="catalog-prev" type="button">Previous</button>
+            <span class="mono" id="catalog-page-label"></span>
+            <button class="button button-secondary button-small" id="catalog-next" type="button">Next</button>
+          </div>
         </section>
 
         <section class="route-view hidden" id="view-history" data-view="history" aria-labelledby="history-title">
@@ -371,20 +379,12 @@
         </section>
 
         <section class="route-view hidden" id="view-settings" data-view="settings" aria-labelledby="settings-title">
-          <header class="workspace-header"><div><h1 id="settings-title">Outputs and native tools.</h1></div><button class="button button-secondary" id="btn-refresh-readiness" type="button"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i><span>Check again</span></button></header>
+          <header class="workspace-header"><div><h1 id="settings-title">Output.</h1></div></header>
           <form class="settings-grid" id="settings-form">
             <section class="panel settings-panel">
               <div class="panel-heading"><h2>Output</h2><p>New conversion and optimization ZIPs are written here.</p></div>
               <label class="field-label" for="output-folder">Output folder</label>
               <div class="field-action"><input id="output-folder" type="text" readonly /><button class="button button-secondary" id="btn-choose-output-folder" type="button">Browse</button></div>
-              <div class="panel-heading tool-heading"><h2>Tool overrides</h2><p>Leave a path blank to use the bundled or auto-detected tool.</p></div>
-              <label><span>RPF tool path</span><input id="rpf-tool-path" type="text" autocomplete="off" /></label>
-              <label><span>Blender path</span><input id="blender-path" type="text" autocomplete="off" /></label>
-              <label><span>7-Zip path</span><input id="sevenzip-path" type="text" autocomplete="off" /></label>
-            </section>
-            <section class="panel settings-panel">
-              <div class="panel-heading"><h2>System readiness</h2><p>Checks use read-only information commands and do not change files.</p></div>
-              <div class="readiness-cards" id="settings-readiness"></div>
             </section>
           </form>
           <footer class="action-row"><div class="save-feedback" id="settings-save-feedback" aria-live="polite"></div><button class="button button-primary action-button" id="btn-save-settings" type="button"><i class="ph ph-floppy-disk" aria-hidden="true"></i><span>Save settings</span></button></footer>
@@ -394,8 +394,8 @@
           <div class="about-panel">
             <img src="assets/pulseconvert-mark.png" alt="" />
             <h1 id="about-title">Pulse Convert Desktop</h1>
-            <p>A local conversion and optimization workstation for FiveM resources.</p>
-            <dl><div><dt>Version</dt><dd id="app-version">Unknown</dd></div><div><dt>Platform</dt><dd id="app-platform">Unknown</dd></div><div><dt>Processing</dt><dd>Local machine</dd></div></dl>
+            <p>A convenient desktop client for browsing, converting, and optimizing FiveM resources on Pulse Convert.</p>
+            <dl><div><dt>Version</dt><dd id="app-version">Unknown</dd></div><div><dt>Platform</dt><dd id="app-platform">Unknown</dd></div><div><dt>Processing</dt><dd>Pulse Convert server</dd></div></dl>
             <button class="button button-quiet" id="btn-sign-out" type="button"><i class="ph ph-sign-out" aria-hidden="true"></i><span>Sign out</span></button>
           </div>
         </section>

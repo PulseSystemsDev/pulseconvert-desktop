@@ -11,10 +11,6 @@ files:
   - renderer/**
   - "!**/*.map"
 
-extraResources:
-  - from: resources/
-    to: resources/
-
 publish:
   provider: github
   owner: YesYesTheDev

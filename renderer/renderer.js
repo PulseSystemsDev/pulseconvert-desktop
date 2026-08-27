@@ -9,12 +9,12 @@
     route: 'optimize',
     source: null,
     settings: null,
-    readiness: null,
     history: readHistory(),
     busyOperation: null,
     verificationUrl: null,
     optimizeOutputPath: null,
     convertOutputPath: null,
+    catalog: { kind: 'vehicles', search: '', sort: 'latest', page: 1 },
   };
 
   const el = (id) => document.getElementById(id);
@@ -72,7 +72,7 @@
   }
 
   function labelForInputKind(kind) {
-    return ({ archive: 'Resource archive', file: 'Standalone stream file', folder: 'Resource folder' })[kind] || 'Local resource';
+    return ({ archive: 'Resource archive', folder: 'Resource folder' })[kind] || 'Local resource';
   }
 
   function selectedValue(name) {
@@ -117,15 +117,16 @@
     const context = ({
       optimize: 'Optimization workspace',
       convert: 'Conversion workspace',
+      catalog: 'Catalog',
       history: 'Run history',
       deploy: 'Deployment',
       settings: 'System settings',
       about: 'About',
-    })[route] || 'Local workstation';
+    })[route] || 'Pulse Convert';
     setText('titlebar-context', context);
     if (route === 'history') renderHistory();
     if (route === 'settings' || route === 'deploy') void loadSettings();
-    if (route === 'settings' || route === 'optimize') void loadReadiness();
+    if (route === 'catalog') void loadCatalog();
   }
 
   function renderAuth(status) {
@@ -143,7 +144,7 @@
 
     for (const view of dataViews) view.classList.add('hidden');
     authView.classList.remove('hidden');
-    setText('titlebar-context', 'Local workstation');
+    setText('titlebar-context', 'Signed out');
 
     const signInButton = el('btn-sign-in');
     const openButton = el('btn-open-browser');
@@ -228,7 +229,7 @@
   function renderProcessPath(stage) {
     const stages = ['source', 'category', 'optimize', 'review', 'deploy'];
     const hasSource = Boolean(state.source);
-    const hasPlan = hasSource && Boolean(selectedValue('optimize-category')) && Boolean(selectedValue('optimize-quality'));
+    const hasPlan = hasSource && Boolean(selectedValue('optimize-category'));
     const active = stage || (!hasSource ? 'source' : state.optimizeOutputPath ? 'review' : hasPlan ? 'optimize' : 'category');
     const activeIndex = stages.indexOf(active);
     for (const item of document.querySelectorAll('.process-path li')) {
@@ -247,16 +248,15 @@
 
   function renderOptimizePlan() {
     const category = selectedValue('optimize-category') || 'vehicles';
-    const quality = selectedValue('optimize-quality') || 'performance';
-    const maxTextureSize = ({ balanced: 2048, performance: 1024, aggressive: 512 })[quality];
     const steps = [
-      `Split texture dictionaries above the 15 MiB stream target and preserve their relationships.`,
-      `Optimize YTD textures progressively up to a ${maxTextureSize} px cap.`,
+      'Upload the resource to Pulse Convert.',
+      'Split texture dictionaries above the 15 MiB stream target and preserve their relationships.',
+      'Optimize YTD textures progressively toward that target.',
     ];
     if (category === 'vehicles') steps.push('Re-check vehicle metadata before bundling.');
-    if (category !== 'textures') steps.push('Run the Blender pass for textures embedded in model files when Blender is available.');
+    if (category !== 'textures') steps.push('Run the Blender pass for textures embedded in model files.');
     steps.push('Rescan streamed assets and report any remaining oversized YTD files.');
-    steps.push('Write a separate optimized resource ZIP without changing the source.');
+    steps.push('Download a separate optimized resource ZIP without changing the source.');
     renderPlanList(el('optimization-plan'), steps);
   }
 
@@ -271,7 +271,7 @@
       target === 'addon'
         ? 'Build an add-on resource that can live alongside existing vehicles.'
         : 'Build a replacement resource for the matching base-game vehicle.',
-      'Write the completed ZIP locally, then run the configured deployment if enabled.',
+      'Download the completed ZIP, then run the configured deployment if enabled.',
     ];
     renderPlanList(el('conversion-plan'), steps);
   }
@@ -312,76 +312,13 @@
     el('sftp-password').value = '';
     if (el('sftp-clear-password')) el('sftp-clear-password').checked = false;
     el('output-folder').value = settings.outputFolder || '';
-    el('rpf-tool-path').value = settings.rpfToolPath || '';
-    el('blender-path').value = settings.blenderPath || '';
-    el('sevenzip-path').value = settings.sevenZipPath || '';
     const output = settings.outputFolder || 'Not configured';
     setText('optimize-output-path', output);
     setText('convert-output-path', output);
     setText('preflight-output', output);
     updateDeployFields();
-    renderConversionPlan();
-  }
-
-  async function loadReadiness() {
-    if (!api || typeof api.getSystemReadiness !== 'function') return;
-    const pill = el('readiness-pill');
-    setText(pill, 'Checking tools');
-    try {
-      state.readiness = await api.getSystemReadiness();
-      renderReadiness();
-    } catch (error) {
-      state.readiness = null;
-      setText(pill, 'Readiness check failed');
-      showToast(error.message || 'Native tools could not be checked.', 'error');
-      updateOptimizeAction();
-    }
-  }
-
-  function renderReadiness() {
-    const readiness = state.readiness;
-    if (!readiness) return;
-    const pill = el('readiness-pill');
-    setText(pill, readiness.ready ? 'Ready to process' : 'Setup required');
-    setText('optimize-output-path', readiness.outputFolder || 'Not configured');
-    setText('convert-output-path', readiness.outputFolder || 'Not configured');
-    setText('preflight-output', readiness.outputFolder || 'Not configured');
-
-    const labels = { rpfTool: 'RPF tool', blender: 'Blender', sevenZip: '7-Zip' };
-    const icons = { rpfTool: 'cube', blender: 'cube-focus', sevenZip: 'file-zip' };
-    const toolList = el('tool-list');
-    const readinessCards = el('settings-readiness');
-    toolList.replaceChildren();
-    readinessCards.replaceChildren();
-
-    for (const key of ['rpfTool', 'blender', 'sevenZip']) {
-      const tool = readiness.tools && readiness.tools[key] ? readiness.tools[key] : { available: false, path: null, detail: 'No status was returned.' };
-      const row = document.createElement('li');
-      const name = document.createElement('span');
-      const status = document.createElement('span');
-      name.textContent = labels[key];
-      status.className = `status-text ${tool.available ? 'is-ready' : 'is-missing'}`;
-      status.textContent = tool.available ? 'Available' : tool.required ? 'Required' : 'Unavailable';
-      row.append(name, status);
-      toolList.appendChild(row);
-
-      const card = document.createElement('article');
-      card.className = `readiness-card ${tool.available ? 'is-ready' : 'is-missing'}`;
-      const icon = document.createElement('i');
-      icon.className = `ph ph-${icons[key]}`;
-      icon.setAttribute('aria-hidden', 'true');
-      const copy = document.createElement('div');
-      const heading = document.createElement('strong');
-      const detail = document.createElement('span');
-      const path = document.createElement('code');
-      heading.textContent = labels[key];
-      detail.textContent = tool.detail || (tool.available ? 'Ready.' : 'Not available.');
-      path.textContent = tool.path || 'No path resolved';
-      copy.append(heading, detail, path);
-      card.append(icon, copy);
-      readinessCards.appendChild(card);
-    }
     updateOptimizeAction();
+    renderConversionPlan();
   }
 
   function updateOptimizeAction() {
@@ -394,17 +331,6 @@
     if (!state.source) {
       button.disabled = true;
       setText(button.querySelector('span'), 'Choose a source');
-      return;
-    }
-    if (!state.readiness) {
-      button.disabled = true;
-      setText(button.querySelector('span'), 'Checking tools');
-      return;
-    }
-    const needsSevenZip = state.source.inputKind === 'archive' && /\.(rar|7z)$/i.test(state.source.inputPath || '');
-    if (!state.readiness.ready || (needsSevenZip && !state.readiness.tools.sevenZip.available)) {
-      button.disabled = true;
-      setText(button.querySelector('span'), 'Resolve tool setup');
       return;
     }
     button.disabled = false;
@@ -468,14 +394,12 @@
   async function runOptimize() {
     if (!state.source || state.busyOperation || !api || typeof api.startOptimize !== 'function') return;
     const category = selectedValue('optimize-category');
-    const quality = selectedValue('optimize-quality');
-    beginRun('optimize', 'Preparing a safe working copy');
+    beginRun('optimize', 'Uploading file');
     try {
       const outcome = await api.startOptimize({
         inputPath: state.source.inputPath,
         inputKind: state.source.inputKind,
         category,
-        quality,
       });
       if (!outcome || !outcome.ok || !outcome.result) throw new Error((outcome && outcome.error) || 'Optimization failed.');
       const result = outcome.result;
@@ -485,10 +409,7 @@
       runState.classList.add('is-success');
       setIcon('optimize-state-icon', 'check');
       setText('optimize-state-title', 'Optimized ZIP is ready');
-      const remaining = Array.isArray(result.oversizedYtd) ? result.oversizedYtd.length : 0;
-      setText('optimize-progress-label', remaining > 0
-        ? `${remaining} oversized texture ${remaining === 1 ? 'dictionary remains' : 'dictionaries remain'} for review.`
-        : 'The source was preserved and the new ZIP passed its post-run scan.');
+      setText('optimize-progress-label', 'The source was preserved and the optimized ZIP was downloaded from the server.');
       setText('optimize-progress-count', 'Complete');
       renderOptimizeMetrics(result);
       renderFixLog('optimize', result.fixLog || []);
@@ -500,12 +421,8 @@
         name: result.resourceName || state.source.name,
         completedAt: new Date().toISOString(),
         outputPath: result.outputZipPath,
-        beforeBytes: result.beforeBytes,
-        afterBytes: result.afterBytes,
-        reductionPercent: result.reductionPercent,
-        optimizedCount: result.optimizedCount,
+        outputSizeBytes: result.outputSizeBytes,
         category: result.category || category,
-        quality: result.quality || quality,
       });
     } catch (error) {
       failRun('optimize', error.message || 'Optimization failed.');
@@ -514,10 +431,7 @@
 
   function renderOptimizeMetrics(result) {
     const metrics = [
-      ['Before', formatBytes(result.beforeBytes)],
-      ['After', formatBytes(result.afterBytes)],
-      ['Saved', result.reductionPercent > 0 ? `${formatBytes(result.savedBytes)} (${result.reductionPercent}%)` : formatBytes(result.savedBytes), true],
-      ['Files optimized', String(result.optimizedCount || 0)],
+      ['Output size', formatBytes(result.outputSizeBytes)],
     ];
     const container = el('optimize-result-metrics');
     container.replaceChildren();
@@ -569,7 +483,7 @@
       setIcon('convert-state-icon', 'check');
       setText('convert-state-title', result.fromCache ? 'Catalog ZIP is ready' : 'Converted ZIP is ready');
       const deploy = result.deploy;
-      let summary = result.fromCache ? 'An exact catalog build was downloaded.' : 'The resource was converted on this machine.';
+      let summary = result.fromCache ? 'An exact catalog build was downloaded.' : 'The resource was converted by the Pulse Convert server.';
       if (deploy && deploy.deployed) summary += ` Deployment completed to ${deploy.destination || deploy.mode}.`;
       if (deploy && deploy.error) summary += ` Deployment did not complete: ${deploy.error}`;
       setText('convert-progress-label', summary);
@@ -637,12 +551,8 @@
     if (!api || typeof api.saveSettings !== 'function') return;
     const payload = {
       outputFolder: el('output-folder').value || null,
-      rpfToolPath: el('rpf-tool-path').value || null,
-      blenderPath: el('blender-path').value || null,
-      sevenZipPath: el('sevenzip-path').value || null,
     };
-    const saved = await saveSettingsPayload(payload, 'settings-save-feedback', 'Output and tool settings saved.');
-    if (saved) await loadReadiness();
+    await saveSettingsPayload(payload, 'settings-save-feedback', 'Output settings saved.');
   }
 
   async function saveSettingsPayload(payload, feedbackId, successMessage) {
@@ -725,7 +635,7 @@
     const path = document.createElement('code');
     name.textContent = item.name;
     detail.textContent = item.type === 'optimize'
-      ? `${item.category || 'Resource'} optimization, ${item.quality || 'default'} preset`
+      ? `${item.category || 'Resource'} optimization`
       : `${item.profile || 'Preserve'} profile, ${item.target || 'add-on'} target`;
     path.textContent = item.outputPath || 'Output path unavailable';
     copy.append(name, detail, path);
@@ -742,11 +652,98 @@
     const resultValue = document.createElement('strong');
     resultLabel.textContent = item.type === 'optimize' ? 'Result' : 'Fixes';
     resultValue.textContent = item.type === 'optimize'
-      ? `${formatBytes(item.afterBytes)}${item.reductionPercent > 0 ? `, ${item.reductionPercent}% saved` : ''}`
+      ? formatBytes(item.outputSizeBytes)
       : String(item.fixCount || 0);
     result.append(resultLabel, resultValue);
     row.append(icon, copy, completed, result);
     return row;
+  }
+
+  async function loadCatalog() {
+    if (!api || typeof api.searchCatalog !== 'function') return;
+    try {
+      const response = await api.searchCatalog({
+        kind: state.catalog.kind,
+        search: state.catalog.search,
+        sort: state.catalog.sort,
+        page: state.catalog.page,
+      });
+      renderCatalog(response);
+    } catch (error) {
+      showToast(error.message || 'The catalog could not be loaded.', 'error');
+    }
+  }
+
+  function renderCatalog(response) {
+    const grid = el('catalog-grid');
+    const empty = el('catalog-empty');
+    const pagination = el('catalog-pagination');
+    grid.replaceChildren();
+    const entries = (response && response.entries) || [];
+    if (entries.length === 0) {
+      empty.classList.remove('hidden');
+      grid.classList.add('hidden');
+      pagination.classList.add('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+    grid.classList.remove('hidden');
+    for (const item of entries) grid.appendChild(createCatalogCard(item));
+
+    const totalPages = response.totalPages || 1;
+    pagination.classList.toggle('hidden', totalPages <= 1);
+    if (totalPages > 1) {
+      setText('catalog-page-label', `Page ${response.page} of ${totalPages}`);
+      el('catalog-prev').disabled = response.page <= 1;
+      el('catalog-next').disabled = response.page >= totalPages;
+    }
+  }
+
+  function createCatalogCard(item) {
+    const card = document.createElement('article');
+    card.className = 'catalog-card';
+
+    const thumb = document.createElement('div');
+    thumb.className = 'catalog-card-thumb';
+    if (item.thumbnailUrl) {
+      const img = document.createElement('img');
+      img.src = item.thumbnailUrl;
+      img.alt = '';
+      img.loading = 'lazy';
+      img.addEventListener('error', () => {
+        img.remove();
+        const icon = document.createElement('i');
+        icon.className = 'ph ph-image-square';
+        icon.setAttribute('aria-hidden', 'true');
+        thumb.appendChild(icon);
+      });
+      thumb.appendChild(img);
+    } else {
+      const icon = document.createElement('i');
+      icon.className = 'ph ph-image-square';
+      icon.setAttribute('aria-hidden', 'true');
+      thumb.appendChild(icon);
+    }
+
+    const body = document.createElement('div');
+    body.className = 'catalog-card-body';
+    const title = document.createElement('strong');
+    title.textContent = item.title;
+    const author = document.createElement('span');
+    author.textContent = item.author ? `by ${item.author}` : 'Author unknown';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'button button-secondary button-small';
+    button.textContent = 'Convert this';
+    button.addEventListener('click', () => {
+      setRoute('convert');
+      el('convert-url').value = item.sourceUrl;
+      renderConversionPlan();
+      void runConvert();
+    });
+    body.append(title, author, button);
+    card.append(thumb, body);
+    return card;
   }
 
   function bindEvents() {
@@ -757,7 +754,7 @@
     el('btn-source-folder').addEventListener('click', () => void chooseSource('folder'));
     el('btn-clear-source').addEventListener('click', () => { state.source = null; renderSource(); resetOptimizeResult(); });
 
-    for (const input of document.querySelectorAll('input[name="optimize-category"], input[name="optimize-quality"]')) {
+    for (const input of document.querySelectorAll('input[name="optimize-category"]')) {
       input.addEventListener('change', () => { renderOptimizePlan(); resetOptimizeResult(); });
     }
     for (const input of document.querySelectorAll('input[name="convert-profile"], input[name="convert-target"]')) {
@@ -781,7 +778,37 @@
     el('btn-choose-output-folder').addEventListener('click', () => void chooseSettingsFolder('output-folder'));
     el('btn-save-deploy').addEventListener('click', () => void saveDeploySettings());
     el('btn-save-settings').addEventListener('click', () => void saveToolSettings());
-    el('btn-refresh-readiness').addEventListener('click', () => void loadReadiness());
+
+    for (const tab of document.querySelectorAll('.catalog-tab')) {
+      tab.addEventListener('click', () => {
+        for (const other of document.querySelectorAll('.catalog-tab')) {
+          const active = other === tab;
+          other.classList.toggle('is-active', active);
+          other.setAttribute('aria-selected', String(active));
+        }
+        state.catalog.kind = tab.dataset.kind;
+        state.catalog.page = 1;
+        void loadCatalog();
+      });
+    }
+    let catalogSearchTimer = null;
+    el('catalog-search').addEventListener('input', () => {
+      window.clearTimeout(catalogSearchTimer);
+      catalogSearchTimer = window.setTimeout(() => {
+        state.catalog.search = el('catalog-search').value.trim();
+        state.catalog.page = 1;
+        void loadCatalog();
+      }, 350);
+    });
+    el('catalog-sort').addEventListener('change', () => {
+      state.catalog.sort = el('catalog-sort').value;
+      state.catalog.page = 1;
+      void loadCatalog();
+    });
+    el('catalog-prev').addEventListener('click', () => {
+      if (state.catalog.page > 1) { state.catalog.page -= 1; void loadCatalog(); }
+    });
+    el('catalog-next').addEventListener('click', () => { state.catalog.page += 1; void loadCatalog(); });
 
     el('btn-clear-history').addEventListener('click', () => {
       state.history = [];
@@ -810,7 +837,6 @@
       .then(renderAuth)
       .catch((error) => renderAuth({ state: 'error', message: error.message || 'Authentication status is unavailable.' }));
     void loadSettings();
-    void loadReadiness();
   }
 
   bindEvents();

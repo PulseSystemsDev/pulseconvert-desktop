@@ -18,10 +18,37 @@ export type AuthStatus =
 export type ConversionProfile = 'preserve' | 'performance';
 export type ConversionTarget = 'addon' | 'replace';
 export type OptimizeCategory = 'props' | 'vehicles' | 'clothing' | 'textures';
-export type OptimizeQuality = 'balanced' | 'performance' | 'aggressive';
-export type OptimizeInputKind = 'archive' | 'file' | 'folder';
+export type OptimizeInputKind = 'archive' | 'folder';
 export type InputPickerKind = 'archive-or-file' | 'folder';
 export type ProgressOperation = 'convert' | 'optimize' | 'remote-convert' | 'remote-optimize';
+
+export type JobStatus = 'scraping' | 'queued' | 'processing' | 'done' | 'failed';
+
+/** Mirrors pulseconvert's buildJobStatusPayload() (src/lib/queue.ts) verbatim - the desktop app
+ *  polls GET /api/jobs/:id for this shape instead of using the website's SSE route, since that
+ *  route only accepts a browser session cookie and EventSource can't carry a bearer header. */
+export interface JobStatusPayload {
+  status: JobStatus;
+  queuePosition: number;
+  scrapeQueuePosition: number;
+  etaMs: number | null;
+  progress: { label: string | null; current: number | null; total: number | null };
+  health: { score: number | null; report: unknown };
+  fixLog: string[];
+  error: string | null;
+  downloadUrl: string | null;
+  previewUrl: string | null;
+  expiresAt: string | null;
+  batch: { total: number; done: number; currentTitle: string | null; currentIndex: number; failedItems: Array<{ title: string; error: string }> } | null;
+}
+
+export interface JobRecord extends JobStatusPayload {
+  id: string;
+  title: string | null;
+  licenseText: string | null;
+  realBrand: string | null;
+  outputSizeBytes: number | null;
+}
 
 export interface OperationProgress {
   operation: ProgressOperation;
@@ -40,7 +67,6 @@ export interface OptimizeRequest {
   inputPath: string;
   inputKind: OptimizeInputKind;
   category: OptimizeCategory;
-  quality: OptimizeQuality;
 }
 
 export interface SelectedInput {
@@ -61,9 +87,6 @@ export interface DeploySettings {
 
 export interface DesktopSettings extends DeploySettings {
   outputFolder: string | null;
-  blenderPath: string | null;
-  rpfToolPath: string | null;
-  sevenZipPath: string | null;
   hasSftpPassword: boolean;
 }
 
@@ -71,24 +94,6 @@ export type SaveDesktopSettings = Omit<DesktopSettings, 'hasSftpPassword'> & {
   /** Omitted means retain the stored secret; an explicit blank string clears it. */
   sftpPassword?: string;
 };
-
-export interface NativeToolReadiness {
-  available: boolean;
-  path: string | null;
-  source: 'bundled' | 'override' | 'detected' | 'path' | 'missing';
-  required: boolean;
-  detail: string;
-}
-
-export interface SystemReadiness {
-  ready: boolean;
-  outputFolder: string;
-  tools: {
-    rpfTool: NativeToolReadiness;
-    blender: NativeToolReadiness;
-    sevenZip: NativeToolReadiness;
-  };
-}
 
 export interface DeployOutcome {
   deployed: boolean;
@@ -120,22 +125,39 @@ export interface OptimizeResult {
   outputZipPath: string;
   resourceName: string;
   category: OptimizeCategory;
-  quality: OptimizeQuality;
-  beforeBytes: number;
-  afterBytes: number;
-  savedBytes: number;
-  reductionPercent: number;
-  scannedCount: number;
-  optimizedCount: number;
   fixLog: string[];
-  totalStreamBytes: number;
-  oversizedYtd: OversizedYtd[];
+  outputSizeBytes: number;
 }
 
 export interface OptimizeOutcome {
   ok: boolean;
   result?: OptimizeResult;
   error?: string;
+}
+
+export type CatalogKind = 'vehicles' | 'map' | 'ped' | 'eup';
+
+export interface CatalogListItem {
+  id: string;
+  title: string;
+  author: string | null;
+  sourceUrl: string;
+  thumbnailUrl: string | null;
+}
+
+export interface CatalogListResponse {
+  entries: CatalogListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface CatalogSearchRequest {
+  kind: CatalogKind;
+  search: string;
+  sort: string;
+  page: number;
 }
 
 /** Narrow contextBridge surface exposed to the sandboxed renderer. */
@@ -157,5 +179,5 @@ export interface PulseConvertDesktopAPI {
   saveSettings: (settings: SaveDesktopSettings) => Promise<{ ok: boolean; error?: string }>;
   chooseFolder: () => Promise<string | null>;
   chooseInput: (kind: InputPickerKind) => Promise<SelectedInput | null>;
-  getSystemReadiness: () => Promise<SystemReadiness>;
+  searchCatalog: (request: CatalogSearchRequest) => Promise<CatalogListResponse>;
 }
