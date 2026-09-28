@@ -1,51 +1,84 @@
-import { app, BrowserWindow, dialog, ipcMain, safeStorage, shell } from 'electron';
+import './bootstrap';
+import { app, BrowserWindow, dialog, ipcMain, Notification, screen, shell } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import log from 'electron-log';
 import { AuthManager } from './authManager';
-import { runConvertFlow } from './convertFlow';
-import { registerThisDevice, getOrCreateDeviceId } from './deviceRegistry';
+import { absoluteApiUrl, ApiError, desktopFetch } from './apiClient';
+import { proxyApiRequest } from './apiProxy';
 import { CommandListener, type DeviceCommand } from './commandListener';
-import { applyConfiguredDeploy } from './deploy/deployFlow';
-import { runLocalOptimize, runManualOptimize } from './optimizeFlow';
-import { desktopFetchJson } from './apiClient';
-import config from './configStore';
+import config, { accountsIssuer, apiBase } from './configStore';
+import { clearPinnedFingerprint } from './deploy/sftpHostKeyStore';
+import { testConfiguredSftp } from './deploy/deployFlow';
 import { clearSftpPassword, loadSftpPassword, saveSftpPassword } from './deploy/sftpCredentialsStore';
-import { setupUpdater } from './updater';
+import { getOrCreateDeviceId, registerThisDevice } from './deviceRegistry';
+import {
+  approveDropped,
+  defaultOutputFolder,
+  isKnownOutput,
+  outputFolder,
+  pickInputs,
+  readApprovedText,
+  registerOutput,
+  requireApprovedInput,
+} from './files';
+import {
+  deployExisting,
+  downloadCatalogItem,
+  downloadJob,
+  optimizeDeployFolder,
+  resumeInterruptedTasks,
+  startConvert,
+  startFix,
+  startMapInspect,
+  startOptimize,
+  startSirenBuild,
+  trackJob,
+  waitForTask,
+} from './operations';
+import { credentialStorageKind } from './secureStore';
+import { taskManager } from './taskManager';
+import { checkForUpdates, getUpdateState, installUpdate, onUpdateState, setupUpdater } from './updater';
 import type {
+  ApiResult,
   AuthStatus,
-  CatalogListResponse,
-  CatalogSearchRequest,
   ConversionProfile,
   ConversionTarget,
-  ConvertRequest,
   DesktopSettings,
-  InputPickerKind,
-  OperationProgress,
+  InputKind,
   OptimizeCategory,
-  OptimizeInputKind,
-  OptimizeRequest,
+  PickerMode,
   SelectedInput,
+  Task,
 } from './types';
 
 log.transports.file.level = 'info';
 log.transports.console.level = 'debug';
 
 const authManager = new AuthManager();
-const approvedOptimizeInputs = new Set<string>();
-const generatedOutputs = new Set<string>();
-const ARCHIVE_EXTENSIONS = new Set(['.zip', '.rar', '.7z', '.oiv', '.rpf']);
-const CONVERSION_PROFILES = new Set<ConversionProfile>(['preserve']);
-const CONVERSION_TARGETS = new Set<ConversionTarget>(['addon', 'replace']);
+const ARCHIVE_OR_FOLDER = new Set<InputKind>(['archive', 'folder']);
+const OPTIMIZE_INPUTS = new Set<InputKind>(['archive', 'folder', 'file']);
+const ZIP_ONLY = new Set<InputKind>(['archive']);
 const OPTIMIZE_CATEGORIES = new Set<OptimizeCategory>(['props', 'vehicles', 'clothing', 'textures']);
-const OPTIMIZE_INPUT_KINDS = new Set<OptimizeInputKind>(['archive', 'folder']);
-const CATALOG_KINDS = new Set(['vehicles', 'map', 'ped', 'eup']);
+const SUPPORTED_SOURCE_HOSTS = new Set(['gta5-mods.com', 'mediafire.com', 'sharemods.com']);
+const EXTERNAL_HOSTS = new Set([
+  'convert.pulsesystems.dev',
+  'pulsesystems.dev',
+  'accounts.pulsesystems.dev',
+  'docs.pulsesystems.dev',
+  'gta5-mods.com',
+  'www.gta5-mods.com',
+  'mediafire.com',
+  'www.mediafire.com',
+  'sharemods.com',
+  'discord.gg',
+  'github.com',
+]);
 
 let mainWindow: BrowserWindow | null = null;
-let heavyOperationTail: Promise<void> = Promise.resolve();
-let pendingHeavyOperations = 0;
 let commandListenerActive = false;
-let lastProgress: OperationProgress | null = null;
+let resumedTasks = false;
+let quitting = false;
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -59,399 +92,388 @@ if (!gotLock) {
   });
 }
 
-function defaultOutputFolder(): string {
-  return path.join(app.getPath('documents'), 'PulseConvert');
+function iconPath(): string {
+  return path.join(__dirname, '..', '..', 'assets', 'icon.png');
 }
 
-function configuredOutputFolder(): string {
-  return config.get('outputFolder') || defaultOutputFolder();
+function restoredBounds(): Electron.Rectangle & { maximized: boolean } {
+  const saved = config.get('windowBounds');
+  const fallback = { width: 1360, height: 860, x: undefined as unknown as number, y: undefined as unknown as number, maximized: false };
+  if (!saved) return fallback;
+  const visible = screen.getAllDisplays().some((display) => {
+    const area = display.workArea;
+    return saved.x !== undefined && saved.y !== undefined && saved.x < area.x + area.width - 80 && saved.y < area.y + area.height - 80 && saved.x + saved.width > area.x + 80 && saved.y >= area.y - 20;
+  });
+  return {
+    width: Math.max(saved.width, 1040),
+    height: Math.max(saved.height, 680),
+    x: visible ? (saved.x as number) : (undefined as unknown as number),
+    y: visible ? (saved.y as number) : (undefined as unknown as number),
+    maximized: saved.maximized,
+  };
 }
 
-function initializeOutputFolder(): void {
-  const folder = configuredOutputFolder();
-  fs.mkdirSync(folder, { recursive: true });
-  if (!config.get('outputFolder')) config.set('outputFolder', folder);
+let saveBoundsTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleSaveBounds(): void {
+  if (saveBoundsTimer) clearTimeout(saveBoundsTimer);
+  saveBoundsTimer = setTimeout(saveBounds, 600);
+}
+
+function saveBounds(): void {
+  if (!mainWindow || mainWindow.isDestroyed() || mainWindow.isMinimized()) return;
+  const maximized = mainWindow.isMaximized();
+  const bounds = maximized ? mainWindow.getNormalBounds() : mainWindow.getBounds();
+  config.set('windowBounds', { ...bounds, maximized });
 }
 
 function createWindow(): void {
+  const bounds = restoredBounds();
   mainWindow = new BrowserWindow({
-    width: 1320,
-    height: 820,
-    minWidth: 940,
-    minHeight: 620,
-    title: 'Pulse Convert Desktop',
-    backgroundColor: '#080b10',
+    width: bounds.width,
+    height: bounds.height,
+    x: bounds.x,
+    y: bounds.y,
+    minWidth: 1040,
+    minHeight: 680,
+    title: 'Pulse Convert',
+    icon: process.platform === 'linux' ? iconPath() : undefined,
+    backgroundColor: '#080b12',
     show: false,
     titleBarStyle: 'hidden',
     ...(process.platform === 'darwin'
-      ? { trafficLightPosition: { x: 16, y: 16 } }
-      : { titleBarOverlay: { color: '#0c0f14', symbolColor: '#dce1e8', height: 48 } }),
+      ? { trafficLightPosition: { x: 16, y: 14 } }
+      : { titleBarOverlay: { color: '#080b12', symbolColor: '#c7d0dd', height: 44 } }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      spellcheck: false,
     },
   });
 
   mainWindow.setMenuBarVisibility(false);
-  mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-  mainWindow.webContents.on('will-navigate', (event) => event.preventDefault());
-  mainWindow.webContents.on('did-finish-load', () => {
-    if (lastProgress) mainWindow?.webContents.send('convert:progress', lastProgress);
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    openExternal(url);
+    return { action: 'deny' };
   });
-  mainWindow.loadFile(path.join(__dirname, '..', '..', 'renderer', 'index.html'));
-  mainWindow.once('ready-to-show', () => mainWindow?.show());
+  mainWindow.webContents.on('will-navigate', (event) => event.preventDefault());
+  if (process.env.PULSECONVERT_RENDERER_URL && !app.isPackaged) {
+    void mainWindow.loadURL(process.env.PULSECONVERT_RENDERER_URL);
+  } else {
+    void mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+  }
+  mainWindow.once('ready-to-show', () => {
+    if (!mainWindow) return;
+    if (bounds.maximized) mainWindow.maximize();
+    if (!config.get('launchMinimized')) mainWindow.show();
+    else mainWindow.showInactive();
+  });
+  mainWindow.on('resize', scheduleSaveBounds);
+  mainWindow.on('move', scheduleSaveBounds);
+  mainWindow.on('close', saveBounds);
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
 }
 
+function send(channel: string, ...args: unknown[]): void {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, ...args);
+}
+
+function openExternal(value: unknown): void {
+  if (typeof value !== 'string') return;
+  try {
+    const url = new URL(value);
+    const allowedHosts = new Set([...EXTERNAL_HOSTS, new URL(apiBase()).hostname, new URL(accountsIssuer()).hostname]);
+    if (url.protocol === 'https:' && allowedHosts.has(url.hostname)) void shell.openExternal(url.href);
+    else log.warn('Blocked opening an external link to', url.hostname);
+  } catch {
+  }
+}
+
 app.whenReady().then(async () => {
-  log.info('Pulse Convert Desktop ready, version', app.getVersion());
-  initializeOutputFolder();
+  log.info('Pulse Convert Desktop ready, version', app.getVersion(), process.platform, process.arch);
+  outputFolder();
+  for (const task of taskManager.list()) if (task.outputPath) registerOutput(task.outputPath);
 
   await authManager.initialize();
   createWindow();
-  setupUpdater(() => mainWindow);
+  setupUpdater();
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+app.on('before-quit', () => {
+  quitting = true;
+  taskManager.persist();
 });
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-function emitProgress(progress: OperationProgress): void {
-  lastProgress = progress;
-  mainWindow?.webContents.send('convert:progress', progress);
-}
+taskManager.onChange((tasks) => send('tasks:changed', tasks));
+onUpdateState((state) => send('update:state', state));
 
-function reportFor(operation: OperationProgress['operation']) {
-  return (label: string, current?: number, total?: number) => emitProgress({ operation, label, current, total });
-}
+const NOTIFY_TEXT: Partial<Record<Task['kind'], string>> = {
+  'convert-url': 'Conversion finished',
+  'convert-file': 'Conversion finished',
+  'convert-pack': 'Pack finished',
+  optimize: 'Optimization finished',
+  fix: 'Fix finished',
+  'catalog-download': 'Download finished',
+  'job-download': 'Download finished',
+  'siren-build': 'Siren resource ready',
+  'map-inspect': 'Map inspection ready',
+  deploy: 'Deploy finished',
+};
 
-function serializeHeavyOperation<T>(operation: OperationProgress['operation'], task: () => Promise<T>): Promise<T> {
-  if (pendingHeavyOperations > 0) emitProgress({ operation, label: 'Queued behind the current operation' });
-  pendingHeavyOperations += 1;
-  const result = heavyOperationTail.then(async () => {
-    try {
-      const value = await task();
-      emitProgress({ operation, label: 'Operation complete' });
-      return value;
-    } catch (err) {
-      emitProgress({ operation, label: `Operation failed: ${(err as Error).message || 'Unknown error'}` });
-      throw err;
-    }
+taskManager.onFinish((task) => {
+  if (quitting) return;
+  if (task.phase === 'done' && task.outputPath && config.get('revealOnComplete') && task.origin === 'app') {
+    shell.showItemInFolder(task.outputPath);
+  }
+  if (!config.get('notifyOnComplete') || !Notification.isSupported() || task.phase === 'cancelled') return;
+  if (mainWindow?.isFocused()) return;
+  const failed = task.phase === 'failed';
+  const deployNote = task.deploy?.deployed ? ` and deployed to ${task.deploy.destination}` : '';
+  const notification = new Notification({
+    title: failed ? `${task.title} failed` : NOTIFY_TEXT[task.kind] ?? 'Finished',
+    body: failed ? task.error ?? 'Something went wrong.' : `${task.title}${task.outputPath ? ' saved' : ''}${deployNote}.`,
+    icon: iconPath(),
+    silent: false,
   });
-  heavyOperationTail = result.then(() => undefined, () => undefined);
-  return result.finally(() => {
-    pendingHeavyOperations = Math.max(0, pendingHeavyOperations - 1);
+  notification.on('click', () => {
+    if (!mainWindow) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+    send('navigate', 'activity');
   });
-}
+  notification.show();
+});
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function normalizeConvertRequest(value: unknown): ConvertRequest & { inputPath?: string } {
-  const raw = typeof value === 'string' ? { url: value, profile: 'preserve', target: 'addon' } : value;
-  if (!isRecord(raw)) throw new Error('Invalid conversion request.');
+function ok<T>(data: T): ApiResult<T> {
+  return { ok: true, data };
+}
 
-  const profile = raw.profile ?? 'preserve';
-  const target = raw.target ?? 'addon';
-  if (!CONVERSION_PROFILES.has(profile as ConversionProfile)) throw new Error('Invalid conversion profile.');
-  if (!CONVERSION_TARGETS.has(target as ConversionTarget)) throw new Error('Invalid conversion target.');
+function fail(err: unknown): ApiResult<never> {
+  return { ok: false, error: (err as Error)?.message || 'Something went wrong.', status: err instanceof ApiError ? err.status : 0 };
+}
 
-  if (typeof raw.inputPath === 'string' && raw.inputPath.length > 0) {
-    if (!path.isAbsolute(raw.inputPath)) throw new Error('The selected input must be an absolute local path.');
-    if (!approvedOptimizeInputs.has(pathKey(raw.inputPath))) {
-      throw new Error('Choose this file through Pulse Convert before starting conversion.');
-    }
-    const inputPath = fs.realpathSync(raw.inputPath);
-    const extension = path.extname(inputPath).toLowerCase();
-    if (!ARCHIVE_EXTENSIONS.has(extension)) throw new Error('File-based conversion needs a ZIP, RAR, 7z, OIV, or RPF archive.');
-    return { url: '', profile: profile as ConversionProfile, target: target as ConversionTarget, inputPath };
-  }
+function requireSignedIn(): void {
+  if (authManager.getStatus().state !== 'signed-in') throw new Error('Sign in first.');
+}
 
-  if (typeof raw.url !== 'string' || raw.url.trim().length === 0 || raw.url.length > 4096) {
-    throw new Error('Enter a valid mod URL first.');
-  }
+function parseSourceUrl(value: unknown): string {
+  if (typeof value !== 'string' || value.length > 4096) throw new Error('Enter a valid mod link.');
   let parsed: URL;
   try {
-    parsed = new URL(raw.url.trim());
+    parsed = new URL(value.trim());
   } catch {
-    throw new Error('Enter a complete http:// or https:// mod URL.');
+    throw new Error(`"${value}" is not a complete link.`);
   }
-  if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) {
-    throw new Error('Only normal http:// or https:// mod URLs are supported.');
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') throw new Error('Only http:// and https:// links are supported.');
+  if (!SUPPORTED_SOURCE_HOSTS.has(parsed.hostname.replace(/^www\./, ''))) {
+    throw new Error('Only gta5-mods.com, mediafire.com, and sharemods.com links are supported.');
   }
-  return { url: parsed.href, profile: profile as ConversionProfile, target: target as ConversionTarget };
+  return parsed.href;
 }
 
-function normalizeRemoteConvertRequest(payload: unknown): ConvertRequest {
-  if (isRecord(payload)) {
-    return normalizeConvertRequest({
-      url: payload.url,
-      profile: payload.profile ?? payload.conversionProfile ?? 'preserve',
-      target: payload.target ?? payload.conversionTarget ?? 'addon',
-    });
-  }
-  return normalizeConvertRequest(payload);
-}
-
-function pathKey(filePath: string): string {
-  const resolved = path.resolve(filePath);
-  return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
-}
-
-function normalizeOptimizeRequest(value: unknown, requirePickerApproval: boolean): OptimizeRequest {
-  if (!isRecord(value)) throw new Error('Invalid optimization request.');
-  if (typeof value.inputPath !== 'string' || value.inputPath.length === 0 || value.inputPath.length > 32_000) {
-    throw new Error('Choose a local archive or resource folder first.');
-  }
-  if (!OPTIMIZE_INPUT_KINDS.has(value.inputKind as OptimizeInputKind)) throw new Error('Invalid optimization input type.');
-  if (!OPTIMIZE_CATEGORIES.has(value.category as OptimizeCategory)) throw new Error('Invalid optimization category.');
-  if (!path.isAbsolute(value.inputPath)) throw new Error('The selected input must be an absolute local path.');
-
-  let inputPath: string;
-  try {
-    inputPath = fs.realpathSync(value.inputPath);
-  } catch {
-    throw new Error('The selected input no longer exists.');
-  }
-  if (requirePickerApproval && !approvedOptimizeInputs.has(pathKey(inputPath))) {
-    throw new Error('Choose this input through Pulse Convert before starting optimization.');
-  }
-
-  const stat = fs.statSync(inputPath);
-  const inputKind = value.inputKind as OptimizeInputKind;
-  if (inputKind === 'folder' && !stat.isDirectory()) throw new Error('The selected optimization input is not a folder.');
-  if (inputKind === 'archive' && !stat.isFile()) throw new Error('The selected optimization input is not a file.');
-  if (stat.isFile() && stat.size > 4 * 1024 * 1024 * 1024) throw new Error('The selected input exceeds the 4 GiB safety limit.');
-  const extension = path.extname(inputPath).toLowerCase();
-  if (inputKind === 'archive' && !ARCHIVE_EXTENSIONS.has(extension)) throw new Error('Archive input must be ZIP, RAR, 7z, OIV, or RPF.');
-
-  return {
-    inputPath,
-    inputKind,
-    category: value.category as OptimizeCategory,
-  };
-}
-
-function registerOutput(filePath: string): void {
-  generatedOutputs.add(pathKey(filePath));
+function parseConvertOptions(raw: Record<string, unknown>): { profile: ConversionProfile; target: ConversionTarget; packBundleMode: 'separate' | 'single' } {
+  const profile = raw.profile ?? raw.conversionProfile ?? 'preserve';
+  const target = raw.target ?? raw.conversionTarget ?? config.get('defaultTarget');
+  const packBundleMode = raw.packBundleMode ?? 'separate';
+  if (profile !== 'preserve' && profile !== 'performance') throw new Error('Invalid conversion profile.');
+  if (target !== 'addon' && target !== 'replace') throw new Error('Invalid conversion target.');
+  if (packBundleMode !== 'separate' && packBundleMode !== 'single') throw new Error('Invalid pack mode.');
+  return { profile, target, packBundleMode };
 }
 
 async function handleDeviceCommand(command: DeviceCommand): Promise<{ ok: boolean; result?: unknown; error?: string }> {
-  if (command.type === 'convert_and_deploy') {
-    let payload: unknown;
-    try {
-      payload = command.payload ? JSON.parse(command.payload) : null;
-      const request = normalizeRemoteConvertRequest(payload);
-      return await serializeHeavyOperation('remote-convert', async () => {
-        const result = await runConvertFlow(request, reportFor('remote-convert'), configuredOutputFolder());
-        registerOutput(result.outputZipPath);
-        const deploy = await applyConfiguredDeploy(result.outputZipPath, result.resourceName);
-        return { ok: true, result: { ...result, deploy } };
-      });
-    } catch (err) {
-      return { ok: false, error: (err as Error).message };
+  if (!config.get('acceptDashboardCommands')) return { ok: false, error: 'This device is set to ignore commands from the dashboard.' };
+  try {
+    const payload = command.payload ? JSON.parse(command.payload) : null;
+    if (command.type === 'convert_and_deploy') {
+      const raw = isRecord(payload) ? payload : { url: payload };
+      const task = startConvert({ urls: [parseSourceUrl(raw.url)], inputs: [], ...parseConvertOptions(raw) }, 'dashboard');
+      const finished = await waitForTask(task.id);
+      if (finished.phase !== 'done') return { ok: false, error: finished.error ?? 'Conversion did not finish.' };
+      return { ok: true, result: { outputZipPath: finished.outputPath, resourceName: finished.title, fixLog: finished.fixLog, deploy: finished.deploy } };
     }
-  }
-
-  if (command.type === 'run_optimize') {
-    const folder = config.get('localDeployFolder');
-    if (!folder) return { ok: false, error: 'No local deploy folder is configured on this device yet.' };
-    try {
-      return await serializeHeavyOperation('remote-optimize', async () => {
-        const summary = await runLocalOptimize(folder, configuredOutputFolder(), reportFor('remote-optimize'));
-        for (const output of summary.outputs) registerOutput(output.outputZipPath);
-        return { ok: true, result: summary };
-      });
-    } catch (err) {
-      return { ok: false, error: (err as Error).message };
+    if (command.type === 'run_optimize') {
+      const folder = config.get('localDeployFolder');
+      if (!folder) return { ok: false, error: 'No local deploy folder is configured on this device yet.' };
+      return { ok: true, result: await optimizeDeployFolder(folder) };
     }
+    return { ok: false, error: `Unknown command type: ${command.type}` };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message };
   }
-
-  return { ok: false, error: `Unknown command type: ${command.type}` };
 }
 
 const commandListener = new CommandListener(getOrCreateDeviceId(), handleDeviceCommand);
 
-function startCommandListener(): void {
-  if (commandListenerActive || !app.isReady()) return;
-  commandListenerActive = true;
-  void registerThisDevice();
-  commandListener.start();
-}
-
 authManager.onStatusChange((status: AuthStatus) => {
-  mainWindow?.webContents.send('auth:status-changed', status);
+  send('auth:status-changed', status);
+  if (status.state === 'awaiting-approval') openExternal(status.verificationUriComplete);
   if (status.state === 'signed-in') {
-    startCommandListener();
+    if (!resumedTasks) {
+      resumedTasks = true;
+      resumeInterruptedTasks();
+    }
+    if (!commandListenerActive && app.isReady()) {
+      commandListenerActive = true;
+      void registerThisDevice();
+      commandListener.start();
+    }
   } else if (status.state === 'signed-out') {
     commandListenerActive = false;
     commandListener.stop();
+    taskManager.cancelAll();
   }
 });
+
+ipcMain.handle('app:info', () => ({
+  version: app.getVersion(),
+  platform: process.platform,
+  arch: process.arch,
+  apiBaseUrl: apiBase(),
+  deviceId: getOrCreateDeviceId(),
+  credentialStorage: credentialStorageKind(),
+}));
 
 ipcMain.on('auth:start', () => authManager.startSignIn().catch((err) => log.error('startSignIn failed', err)));
 ipcMain.on('auth:cancel', () => authManager.cancelSignIn());
 ipcMain.on('auth:sign-out', () => authManager.signOut());
 ipcMain.handle('auth:get-status', () => authManager.getStatus());
 
-ipcMain.on('shell:open-external', (_event, value: unknown) => {
-  if (typeof value !== 'string') return;
-  try {
-    const url = new URL(value);
-    const accountsOrigin = new URL(config.get('accountsIssuer')).origin;
-    if (url.protocol === 'https:' && url.origin === accountsOrigin) void shell.openExternal(url.href);
-  } catch {
-    // Ignore malformed/untrusted renderer input.
-  }
-});
+ipcMain.handle('api:request', (_event, request: unknown) => proxyApiRequest(request));
 
-ipcMain.handle('convert:start', async (_event, value: unknown) => {
-  try {
-    const request = normalizeConvertRequest(value);
-    return await serializeHeavyOperation('convert', async () => {
-      const result = await runConvertFlow(request, reportFor('convert'), configuredOutputFolder());
-      registerOutput(result.outputZipPath);
-      const deploy = await applyConfiguredDeploy(result.outputZipPath, result.resourceName);
-      return { ok: true, result: { ...result, deploy } };
-    });
-  } catch (err) {
-    log.error('convert:start failed', err);
-    return { ok: false, error: (err as Error).message || 'Conversion failed.' };
-  }
-});
+ipcMain.handle('tasks:list', () => taskManager.list());
+ipcMain.on('task:cancel', (_event, id: unknown) => typeof id === 'string' && taskManager.cancel(id));
+ipcMain.on('task:dismiss', (_event, id: unknown) => typeof id === 'string' && taskManager.dismiss(id));
+ipcMain.on('tasks:clear', () => taskManager.clearFinished());
 
-ipcMain.handle('optimize:start', async (_event, value: unknown) => {
-  try {
-    const request = normalizeOptimizeRequest(value, true);
-    return await serializeHeavyOperation('optimize', async () => {
-      const result = await runManualOptimize(request, reportFor('optimize'), configuredOutputFolder());
-      registerOutput(result.outputZipPath);
-      return { ok: true, result };
-    });
-  } catch (err) {
-    log.error('optimize:start failed', err);
-    return { ok: false, error: (err as Error).message || 'Optimization failed.' };
-  }
-});
-
-ipcMain.on('shell:show-in-folder', (_event, value: unknown) => {
-  if (typeof value !== 'string' || !path.isAbsolute(value) || !generatedOutputs.has(pathKey(value))) return;
-  if (fs.existsSync(value)) shell.showItemInFolder(value);
-});
-
-ipcMain.handle('input:choose', async (_event, kind: unknown): Promise<SelectedInput | null> => {
-  if (!mainWindow || (kind !== 'archive-or-file' && kind !== 'folder')) return null;
-  const pickerKind = kind as InputPickerKind;
-  const result = await dialog.showOpenDialog(mainWindow, pickerKind === 'folder'
-    ? { properties: ['openDirectory'] }
-    : {
-        properties: ['openFile'],
-        filters: [{ name: 'GTA V resource archives', extensions: ['zip', 'rar', '7z', 'oiv', 'rpf'] }],
-      });
-  if (result.canceled || result.filePaths.length !== 1) return null;
-
-  const inputPath = fs.realpathSync(result.filePaths[0]);
-  const stat = fs.statSync(inputPath);
-  const extension = path.extname(inputPath).toLowerCase();
-  let inputKind: OptimizeInputKind;
-  if (stat.isDirectory()) inputKind = 'folder';
-  else if (ARCHIVE_EXTENSIONS.has(extension)) inputKind = 'archive';
-  else return null;
-  approvedOptimizeInputs.add(pathKey(inputPath));
-  return { inputPath, inputKind, name: path.basename(inputPath), sizeBytes: stat.isFile() ? stat.size : null };
-});
-
-function currentSettings(): DesktopSettings {
-  return {
-    deployMode: config.get('deployMode'),
-    localDeployFolder: config.get('localDeployFolder'),
-    sftpHost: config.get('sftpHost'),
-    sftpPort: config.get('sftpPort'),
-    sftpUsername: config.get('sftpUsername'),
-    sftpRemotePath: config.get('sftpRemotePath'),
-    outputFolder: config.get('outputFolder') || defaultOutputFolder(),
-    hasSftpPassword: loadSftpPassword() !== null,
-  };
-}
-
-function nullableString(value: unknown, fallback: string | null): string | null {
-  if (value === undefined) return fallback;
-  if (value === null) return null;
-  if (typeof value !== 'string') throw new Error('A settings text value was invalid.');
-  if (value.length > 32_000) throw new Error('A settings text value was too long.');
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-function nullableAbsolutePath(value: unknown, fallback: string | null, label: string): string | null {
-  const normalized = nullableString(value, fallback);
-  if (normalized !== null && !path.isAbsolute(normalized)) throw new Error(`${label} must be an absolute path.`);
-  return normalized;
-}
-
-ipcMain.handle('settings:get', (): DesktopSettings => currentSettings());
-
-ipcMain.handle('settings:save', (_event, value: unknown): { ok: boolean; error?: string } => {
-  try {
-    if (!isRecord(value)) throw new Error('Invalid settings payload.');
-    const previous = currentSettings();
-    const deployMode = value.deployMode ?? previous.deployMode;
-    if (!['none', 'local', 'sftp'].includes(String(deployMode))) throw new Error('Invalid deploy mode.');
-    const rawPort = value.sftpPort ?? previous.sftpPort;
-    if (typeof rawPort !== 'number' || !Number.isInteger(rawPort) || rawPort < 1 || rawPort > 65_535) {
-      throw new Error('SFTP port must be a whole number from 1 to 65535.');
-    }
-
-    const outputFolder = nullableAbsolutePath(value.outputFolder, previous.outputFolder, 'Output folder') || defaultOutputFolder();
-    const updates = {
-      deployMode: deployMode as DesktopSettings['deployMode'],
-      localDeployFolder: nullableAbsolutePath(value.localDeployFolder, previous.localDeployFolder, 'Local deploy folder'),
-      sftpHost: nullableString(value.sftpHost, previous.sftpHost),
-      sftpPort: rawPort,
-      sftpUsername: nullableString(value.sftpUsername, previous.sftpUsername),
-      sftpRemotePath: nullableString(value.sftpRemotePath, previous.sftpRemotePath),
-      outputFolder,
-    };
-    const changesPassword = Object.prototype.hasOwnProperty.call(value, 'sftpPassword') && value.sftpPassword !== undefined;
-    if (changesPassword) {
-      if (typeof value.sftpPassword !== 'string') throw new Error('SFTP password must be text.');
-      if (value.sftpPassword.length > 4096) throw new Error('SFTP password is too long.');
-      if (value.sftpPassword.length > 0 && !safeStorage.isEncryptionAvailable()) {
-        throw new Error('OS-level credential encryption is unavailable; the password was not saved.');
-      }
-    }
-
-    fs.mkdirSync(outputFolder, { recursive: true });
-    const previousPassword = changesPassword ? loadSftpPassword() : null;
+function taskHandler(channel: string, start: (value: unknown) => Task): void {
+  ipcMain.handle(channel, (_event, value: unknown) => {
     try {
-      if (changesPassword) {
-        if ((value.sftpPassword as string).length === 0) clearSftpPassword();
-        else saveSftpPassword(value.sftpPassword as string);
-      }
-      config.set(updates);
-    } catch (commitError) {
-      if (changesPassword) {
-        try {
-          if (previousPassword === null) clearSftpPassword();
-          else saveSftpPassword(previousPassword);
-        } catch (rollbackError) {
-          log.error('Could not roll back SFTP credential after settings failure', rollbackError);
-        }
-      }
-      throw commitError;
+      requireSignedIn();
+      return ok({ taskId: start(value).id });
+    } catch (err) {
+      log.warn(`${channel} rejected`, err);
+      return fail(err);
     }
-    return { ok: true };
+  });
+}
+
+taskHandler('convert:start', (value) => {
+  if (!isRecord(value)) throw new Error('Invalid conversion request.');
+  const urls = Array.isArray(value.urls) ? value.urls.map(parseSourceUrl) : [];
+  const inputs = Array.isArray(value.inputs) ? value.inputs.map((item) => requireApprovedInput(item, ARCHIVE_OR_FOLDER)) : [];
+  if (urls.length + inputs.length > 50) throw new Error('A pack can have at most 50 items.');
+  return startConvert({ urls, inputs, ...parseConvertOptions(value) });
+});
+
+taskHandler('optimize:start', (value) => {
+  if (!isRecord(value) || !OPTIMIZE_CATEGORIES.has(value.category as OptimizeCategory)) throw new Error('Pick what kind of resource this is.');
+  const input = requireApprovedInput(value.inputPath, OPTIMIZE_INPUTS);
+  if (input.inputKind === 'file' && value.category !== 'textures') throw new Error('A standalone .ytd can only be optimized as Textures.');
+  return startOptimize(input, value.category as OptimizeCategory);
+});
+
+taskHandler('fix:start', (value) => startFix(requireApprovedInput(value, ARCHIVE_OR_FOLDER)));
+
+taskHandler('map-inspect:start', (value) => {
+  const input = requireApprovedInput(value, ZIP_ONLY);
+  if (!/\.(zip|oiv)$/i.test(input.inputPath)) throw new Error('The map inspector needs a .zip archive.');
+  return startMapInspect(input);
+});
+
+taskHandler('siren:start', (value) => {
+  if (!isRecord(value)) throw new Error('Invalid siren request.');
+  const input = requireApprovedInput(value.inputPath, ZIP_ONLY);
+  if (!/\.zip$/i.test(input.inputPath)) throw new Error('Upload your audio bank files as a .zip.');
+  const text = (key: string, max: number, required = true): string => {
+    const raw = value[key];
+    if (raw === undefined && !required) return '';
+    if (typeof raw !== 'string' || (required && !raw.trim()) || raw.length > max) throw new Error(`Check the ${key} field.`);
+    return raw.trim();
+  };
+  const tones = Array.isArray(value.tones) ? value.tones.filter((tone): tone is string => typeof tone === 'string' && tone.trim().length > 0).map((tone) => tone.trim()) : [];
+  if (tones.length === 0 || tones.length > 64) throw new Error('Add between 1 and 64 siren tones.');
+  return startSirenBuild(input, {
+    inputPath: input.inputPath,
+    resourceName: text('resourceName', 60),
+    dlcName: text('dlcName', 60),
+    soundsetName: text('soundsetName', 120),
+    tones,
+    gamedataPath: text('gamedataPath', 255, false),
+    sounddataPath: text('sounddataPath', 255, false),
+    wavepackPath: text('wavepackPath', 255, false),
+  });
+});
+
+taskHandler('catalog:download', (value) => {
+  if (!isRecord(value) || (value.kind !== 'vehicle' && value.kind !== 'animation') || typeof value.id !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(value.id)) {
+    throw new Error('Invalid catalog item.');
+  }
+  return downloadCatalogItem({ kind: value.kind, id: value.id, title: typeof value.title === 'string' ? value.title.slice(0, 200) : 'Catalog item' });
+});
+
+function jobIdFrom(value: unknown): string {
+  if (typeof value !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(value)) throw new Error('Invalid job.');
+  return value;
+}
+
+ipcMain.handle('job:download', (_event, jobId: unknown, title: unknown) => {
+  try {
+    requireSignedIn();
+    return ok({ taskId: downloadJob(jobIdFrom(jobId), typeof title === 'string' ? title : null).id });
   } catch (err) {
-    log.warn('settings:save rejected', err);
-    return { ok: false, error: (err as Error).message };
+    return fail(err);
+  }
+});
+
+ipcMain.handle('job:track', (_event, jobId: unknown, title: unknown) => {
+  try {
+    requireSignedIn();
+    const id = jobIdFrom(jobId);
+    const existing = taskManager.list().find((task) => task.jobId === id && !['done', 'failed', 'cancelled'].includes(task.phase));
+    if (existing) return ok({ taskId: existing.id });
+    return ok({ taskId: trackJob(id, typeof title === 'string' ? title : null).id });
+  } catch (err) {
+    return fail(err);
+  }
+});
+
+ipcMain.handle('deploy:output', (_event, filePath: unknown) => {
+  try {
+    if (typeof filePath !== 'string' || !isKnownOutput(filePath) || !fs.existsSync(filePath)) throw new Error('That output file is no longer available.');
+    return ok({ taskId: deployExisting(filePath).id });
+  } catch (err) {
+    return fail(err);
+  }
+});
+
+ipcMain.handle('files:pick', (_event, mode: unknown, multiple: unknown) => {
+  if (!['archives', 'folder', 'zip', 'image', 'text'].includes(String(mode))) return [];
+  return pickInputs(mainWindow, mode as PickerMode, multiple === true);
+});
+ipcMain.handle('files:approve-dropped', (_event, paths: unknown): SelectedInput[] => approveDropped(paths));
+ipcMain.handle('files:read-text', (_event, inputPath: unknown) => {
+  try {
+    return readApprovedText(inputPath);
+  } catch {
+    return null;
   }
 });
 
@@ -461,27 +483,154 @@ ipcMain.handle('settings:choose-folder', async () => {
   return result.canceled || result.filePaths.length === 0 ? null : result.filePaths[0];
 });
 
-ipcMain.handle('catalog:search', async (_event, value: unknown): Promise<CatalogListResponse> => {
-  if (!isRecord(value) || !CATALOG_KINDS.has(String(value.kind))) throw new Error('Invalid catalog search request.');
-  const request = value as unknown as CatalogSearchRequest;
-  const page = Number.isInteger(request.page) && request.page > 0 ? request.page : 1;
-  const search = typeof request.search === 'string' ? request.search.slice(0, 200) : '';
-  const sort = typeof request.sort === 'string' ? request.sort : 'latest';
-  const params = new URLSearchParams({ search, sort, page: String(page), pageSize: '24' });
-  let response: CatalogListResponse;
-  if (request.kind === 'vehicles') {
-    response = await desktopFetchJson<CatalogListResponse>(`/api/catalog/vehicles/list?${params.toString()}`);
-  } else {
-    params.set('kind', request.kind);
-    response = await desktopFetchJson<CatalogListResponse>(`/api/catalog-content/list?${params.toString()}`);
-  }
+const MAX_PREVIEW_BYTES = 120 * 1024 * 1024;
 
-  const apiBase = config.get('apiBaseUrl').replace(/\/$/, '');
-  return {
-    ...response,
-    entries: response.entries.map((entry) => ({
-      ...entry,
-      thumbnailUrl: entry.thumbnailUrl && entry.thumbnailUrl.startsWith('/') ? `${apiBase}${entry.thumbnailUrl}` : entry.thumbnailUrl,
-    })),
-  };
+ipcMain.handle('preview:fetch', async (_event, source: unknown): Promise<ApiResult<ArrayBuffer>> => {
+  try {
+    if (!isRecord(source) || (source.kind !== 'job' && source.kind !== 'vehicle')) throw new Error('Invalid preview.');
+    const id = jobIdFrom(source.id);
+    const res =
+      source.kind === 'job'
+        ? await desktopFetch(`/api/jobs/${id}/preview`)
+        : await fetch(absoluteApiUrl(`/api/vehicles/${id}/preview`)).then(async (response) => {
+            if (!response.ok) throw new ApiError('No 3D preview is available for this vehicle.', response.status);
+            return response;
+          });
+    const length = Number(res.headers.get('content-length'));
+    if (Number.isFinite(length) && length > MAX_PREVIEW_BYTES) throw new Error('This 3D preview is too large to show here.');
+    const buffer = await res.arrayBuffer();
+    if (buffer.byteLength > MAX_PREVIEW_BYTES) throw new Error('This 3D preview is too large to show here.');
+    return ok(buffer);
+  } catch (err) {
+    return fail(err);
+  }
 });
+
+const SCREENSHOT_TYPES: Record<string, string> = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' };
+
+ipcMain.handle('screenshot:submit', async (_event, jobId: unknown) => {
+  try {
+    requireSignedIn();
+    const id = jobIdFrom(jobId);
+    const [picked] = await pickInputs(mainWindow, 'image', false);
+    if (!picked) return ok({ submitted: false });
+    const type = SCREENSHOT_TYPES[path.extname(picked.inputPath).toLowerCase()];
+    if (!type) throw new Error('Pick a PNG, JPEG, or WebP image.');
+    if ((picked.sizeBytes ?? 0) > 8 * 1024 * 1024) throw new Error('Screenshots can be at most 8 MB.');
+    const form = new FormData();
+    form.set('image', new Blob([fs.readFileSync(picked.inputPath)], { type }), picked.name);
+    await desktopFetch(`/api/jobs/${id}/screenshot`, { method: 'POST', body: form });
+    return ok({ submitted: true });
+  } catch (err) {
+    return fail(err);
+  }
+});
+
+ipcMain.on('shell:show-in-folder', (_event, value: unknown) => {
+  if (typeof value === 'string' && isKnownOutput(value) && fs.existsSync(value)) shell.showItemInFolder(value);
+});
+ipcMain.on('shell:open-output', () => void shell.openPath(outputFolder()));
+ipcMain.on('shell:open-external', (_event, value: unknown) => openExternal(value));
+
+function currentSettings(): DesktopSettings {
+  return {
+    outputFolder: config.get('outputFolder') || defaultOutputFolder(),
+    deployMode: config.get('deployMode'),
+    localDeployFolder: config.get('localDeployFolder'),
+    sftpHost: config.get('sftpHost'),
+    sftpPort: config.get('sftpPort'),
+    sftpUsername: config.get('sftpUsername'),
+    sftpRemotePath: config.get('sftpRemotePath'),
+    hasSftpPassword: loadSftpPassword() !== null,
+    autoDownload: config.get('autoDownload'),
+    notifyOnComplete: config.get('notifyOnComplete'),
+    revealOnComplete: config.get('revealOnComplete'),
+    acceptDashboardCommands: config.get('acceptDashboardCommands'),
+    defaultTarget: config.get('defaultTarget'),
+    launchMinimized: config.get('launchMinimized'),
+    onboarded: config.get('onboarded'),
+  };
+}
+
+function nullableString(value: unknown, fallback: string | null, max = 4096): string | null {
+  if (value === undefined) return fallback;
+  if (value === null) return null;
+  if (typeof value !== 'string' || value.length > max) throw new Error('A settings value was invalid.');
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function nullableAbsolutePath(value: unknown, fallback: string | null, label: string): string | null {
+  const normalized = nullableString(value, fallback, 32_000);
+  if (normalized !== null && !path.isAbsolute(normalized)) throw new Error(`${label} must be a full folder path.`);
+  return normalized;
+}
+
+function booleanSetting(value: unknown, fallback: boolean): boolean {
+  if (value === undefined) return fallback;
+  if (typeof value !== 'boolean') throw new Error('A settings toggle was invalid.');
+  return value;
+}
+
+ipcMain.handle('settings:get', (): DesktopSettings => currentSettings());
+
+ipcMain.handle('settings:save', (_event, value: unknown): ApiResult<DesktopSettings> => {
+  try {
+    if (!isRecord(value)) throw new Error('Invalid settings.');
+    const previous = currentSettings();
+    const deployMode = value.deployMode ?? previous.deployMode;
+    if (!['none', 'local', 'sftp'].includes(String(deployMode))) throw new Error('Invalid deploy mode.');
+    const port = value.sftpPort ?? previous.sftpPort;
+    if (typeof port !== 'number' || !Number.isInteger(port) || port < 1 || port > 65_535) throw new Error('SFTP port must be a whole number from 1 to 65535.');
+    const defaultTarget = value.defaultTarget ?? previous.defaultTarget;
+    if (defaultTarget !== 'addon' && defaultTarget !== 'replace') throw new Error('Invalid default target.');
+
+    const folder = nullableAbsolutePath(value.outputFolder, previous.outputFolder, 'Output folder') || defaultOutputFolder();
+    const updates = {
+      outputFolder: folder,
+      deployMode: deployMode as DesktopSettings['deployMode'],
+      localDeployFolder: nullableAbsolutePath(value.localDeployFolder, previous.localDeployFolder, 'Local resources folder'),
+      sftpHost: nullableString(value.sftpHost, previous.sftpHost, 255),
+      sftpPort: port,
+      sftpUsername: nullableString(value.sftpUsername, previous.sftpUsername, 255),
+      sftpRemotePath: nullableString(value.sftpRemotePath, previous.sftpRemotePath, 1024),
+      autoDownload: booleanSetting(value.autoDownload, previous.autoDownload),
+      notifyOnComplete: booleanSetting(value.notifyOnComplete, previous.notifyOnComplete),
+      revealOnComplete: booleanSetting(value.revealOnComplete, previous.revealOnComplete),
+      acceptDashboardCommands: booleanSetting(value.acceptDashboardCommands, previous.acceptDashboardCommands),
+      defaultTarget: defaultTarget as ConversionTarget,
+      launchMinimized: booleanSetting(value.launchMinimized, previous.launchMinimized),
+      onboarded: booleanSetting(value.onboarded, previous.onboarded),
+    };
+
+    if (value.sftpPassword !== undefined) {
+      if (typeof value.sftpPassword !== 'string' || value.sftpPassword.length > 4096) throw new Error('Invalid SFTP password.');
+      if (value.sftpPassword.length === 0) clearSftpPassword();
+      else saveSftpPassword(value.sftpPassword);
+    }
+    fs.mkdirSync(folder, { recursive: true });
+    config.set(updates);
+    return ok(currentSettings());
+  } catch (err) {
+    log.warn('settings:save rejected', err);
+    return fail(err);
+  }
+});
+
+ipcMain.handle('sftp:test', async () => {
+  try {
+    return ok(await testConfiguredSftp());
+  } catch (err) {
+    return fail(err);
+  }
+});
+
+ipcMain.handle('sftp:forget-host-key', () => {
+  const host = config.get('sftpHost');
+  if (host) clearPinnedFingerprint(host, config.get('sftpPort'));
+});
+
+ipcMain.handle('update:get', () => getUpdateState());
+ipcMain.on('update:check', () => checkForUpdates());
+ipcMain.on('update:install', () => installUpdate());
+

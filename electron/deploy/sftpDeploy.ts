@@ -1,8 +1,5 @@
-import path from 'path';
-import os from 'os';
-import fs from 'fs';
 import SftpClient from 'ssh2-sftp-client';
-import { extractZip } from '../pipeline/unpack';
+import { stageResource } from './stage';
 import { fingerprintOf, getPinnedFingerprint, pinFingerprint } from './sftpHostKeyStore';
 
 export interface SftpTarget {
@@ -13,25 +10,11 @@ export interface SftpTarget {
   remotePath: string;
 }
 
-export async function deployToSftp(zipPath: string, resourceName: string, target: SftpTarget): Promise<string> {
-  const localExtractDir = path.join(os.tmpdir(), 'pulseconvert-desktop-sftp', `${resourceName}-${Date.now()}`);
-  const client = new SftpClient();
-  try {
-    await extractZip(zipPath, localExtractDir);
-
-    const expectedResourceDir = path.join(localExtractDir, resourceName);
-    let localUploadDir = localExtractDir;
-    if (fs.existsSync(expectedResourceDir) && fs.statSync(expectedResourceDir).isDirectory()) {
-      localUploadDir = expectedResourceDir;
-    } else {
-      const topLevelEntries = fs.readdirSync(localExtractDir, { withFileTypes: true }).filter((entry) => !entry.isSymbolicLink());
-      if (topLevelEntries.length === 1 && topLevelEntries[0].isDirectory()) {
-        localUploadDir = path.join(localExtractDir, topLevelEntries[0].name);
-      }
-    }
-
-    let hostKeyMismatch: { pinned: string; presented: string } | null = null;
-    await client.connect({
+async function connect(client: SftpClient, target: SftpTarget): Promise<string> {
+  let hostKeyMismatch: { pinned: string; presented: string } | null = null;
+  let presentedFingerprint = '';
+  await client
+    .connect({
       host: target.host,
       port: target.port,
       username: target.username,
@@ -39,6 +22,7 @@ export async function deployToSftp(zipPath: string, resourceName: string, target
       readyTimeout: 15_000,
       hostVerifier: (hostKey: Buffer): boolean => {
         const presented = fingerprintOf(hostKey);
+        presentedFingerprint = presented;
         const pinned = getPinnedFingerprint(target.host, target.port);
         if (!pinned) {
           pinFingerprint(target.host, target.port, presented);
@@ -50,24 +34,44 @@ export async function deployToSftp(zipPath: string, resourceName: string, target
         }
         return true;
       },
-    }).catch((err) => {
+    })
+    .catch((err) => {
       if (hostKeyMismatch) {
         const { pinned, presented } = hostKeyMismatch as { pinned: string; presented: string };
         throw new Error(
           `SFTP host key for ${target.host}:${target.port} does not match the one recorded on first connect ` +
-          `(expected ${pinned}, got ${presented}). This can mean the server was reinstalled or its key was ` +
-          `rotated - or that a network attacker is intercepting this connection. Only proceed if you can ` +
-          `independently confirm the new key with whoever controls the server.`
+            `(expected ${pinned}, got ${presented}). This can mean the server was reinstalled or its key was ` +
+            `rotated - or that someone is intercepting the connection. Only continue once you've confirmed the ` +
+            `new key with whoever runs the server, then use "Forget host key" in Deploy settings.`,
         );
       }
       throw err;
     });
+  return presentedFingerprint;
+}
 
-    const remoteResourceDir = `${target.remotePath.replace(/\/$/, '')}/${resourceName}`;
-    await client.uploadDir(localUploadDir, remoteResourceDir);
+export async function testSftpConnection(target: SftpTarget): Promise<{ fingerprint: string }> {
+  const client = new SftpClient();
+  try {
+    const fingerprint = await connect(client, target);
+    const exists = await client.exists(target.remotePath);
+    if (exists !== 'd') throw new Error(`Connected, but the remote path ${target.remotePath} is not a folder on the server.`);
+    return { fingerprint };
+  } finally {
+    await client.end().catch(() => {});
+  }
+}
+
+export async function deployToSftp(zipPath: string, resourceName: string, target: SftpTarget): Promise<string> {
+  const staged = await stageResource(zipPath, resourceName);
+  const client = new SftpClient();
+  try {
+    await connect(client, target);
+    const remoteResourceDir = `${target.remotePath.replace(/\/$/, '')}/${staged.name}`;
+    await client.uploadDir(staged.dir, remoteResourceDir);
     return remoteResourceDir;
   } finally {
     await client.end().catch(() => {});
-    fs.rmSync(localExtractDir, { recursive: true, force: true });
+    staged.cleanup();
   }
 }

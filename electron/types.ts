@@ -1,7 +1,6 @@
 export interface TokenSet {
   accessToken: string;
   refreshToken: string | null;
-
   accessTokenExpiresAt: number;
   scope: string;
 }
@@ -15,17 +14,30 @@ export type AuthStatus =
   | { state: 'expired' }
   | { state: 'error'; message: string };
 
-export type ConversionProfile = 'preserve';
+export type ConversionProfile = 'preserve' | 'performance';
 export type ConversionTarget = 'addon' | 'replace';
 export type OptimizeCategory = 'props' | 'vehicles' | 'clothing' | 'textures';
-export type OptimizeInputKind = 'archive' | 'folder';
-export type InputPickerKind = 'archive-or-file' | 'folder';
-export type ProgressOperation = 'convert' | 'optimize' | 'remote-convert' | 'remote-optimize';
+export type InputKind = 'archive' | 'folder' | 'file';
+export type PickerMode = 'archives' | 'folder' | 'zip' | 'image' | 'text';
+export type DeployMode = 'none' | 'local' | 'sftp';
 
-export type JobStatus = 'scraping' | 'queued' | 'processing' | 'done' | 'failed';
+export type ServerJobStatus = 'scraping' | 'queued' | 'processing' | 'done' | 'failed';
+export type ServerJobSourceType = 'upload' | 'url' | 'batch' | 'fix' | 'optimize';
 
-export interface JobStatusPayload {
-  status: JobStatus;
+export interface SelectedInput {
+  inputPath: string;
+  inputKind: InputKind;
+  name: string;
+  sizeBytes: number | null;
+}
+
+export interface JobRecord {
+  id: string;
+  title: string | null;
+  licenseText: string | null;
+  realBrand: string | null;
+  outputSizeBytes: number | null;
+  status: ServerJobStatus;
   queuePosition: number;
   scrapeQueuePosition: number;
   etaMs: number | null;
@@ -39,141 +51,207 @@ export interface JobStatusPayload {
   batch: { total: number; done: number; currentTitle: string | null; currentIndex: number; failedItems: Array<{ title: string; error: string }> } | null;
 }
 
-export interface JobRecord extends JobStatusPayload {
+export interface JobListItem {
   id: string;
   title: string | null;
-  licenseText: string | null;
-  realBrand: string | null;
-  outputSizeBytes: number | null;
+  sourceType: ServerJobSourceType;
+  status: ServerJobStatus;
+  error: string | null;
+  conversionTarget: ConversionTarget;
+  optimizeCategory: OptimizeCategory | null;
+  detectedCategory: string | null;
+  inputSizeBytes: number;
+  outputSizeBytes: number;
+  hasOutput: boolean;
+  healthScore: number | null;
+  createdAt: string | null;
+  completedAt: string | null;
+  expiresAt: string | null;
 }
 
-export interface OperationProgress {
-  operation: ProgressOperation;
+export type TaskKind =
+  | 'convert-url'
+  | 'convert-file'
+  | 'convert-pack'
+  | 'optimize'
+  | 'fix'
+  | 'catalog-download'
+  | 'job-download'
+  | 'siren-build'
+  | 'map-inspect'
+  | 'deploy';
+
+export type TaskPhase =
+  | 'waiting'
+  | 'preparing'
+  | 'uploading'
+  | 'submitting'
+  | 'scraping'
+  | 'queued'
+  | 'processing'
+  | 'downloading'
+  | 'deploying'
+  | 'done'
+  | 'failed'
+  | 'cancelled';
+
+export type TaskOrigin = 'app' | 'dashboard';
+
+export interface DeployOutcome {
+  deployed: boolean;
+  mode: DeployMode;
+  destination?: string;
+  error?: string;
+}
+
+export interface Task {
+  id: string;
+  kind: TaskKind;
+  origin: TaskOrigin;
+  title: string;
+  subtitle: string | null;
+  phase: TaskPhase;
   label: string;
-  current?: number;
-  total?: number;
+  percent: number | null;
+  jobId: string | null;
+  queuePosition: number | null;
+  etaMs: number | null;
+  outputPath: string | null;
+  outputSizeBytes: number | null;
+  fixLog: string[];
+  deploy: DeployOutcome | null;
+  error: string | null;
+  result: unknown;
+  createdAt: number;
+  finishedAt: number | null;
 }
 
 export interface ConvertRequest {
-  url: string;
+  urls: string[];
+  inputs: string[];
   profile: ConversionProfile;
   target: ConversionTarget;
+  packBundleMode: 'separate' | 'single';
 }
 
 export interface OptimizeRequest {
   inputPath: string;
-  inputKind: OptimizeInputKind;
   category: OptimizeCategory;
 }
 
-export interface SelectedInput {
+export interface SirenBuildRequest {
   inputPath: string;
-  inputKind: OptimizeInputKind;
-  name: string;
-  sizeBytes: number | null;
+  resourceName: string;
+  dlcName: string;
+  soundsetName: string;
+  tones: string[];
+  gamedataPath?: string;
+  sounddataPath?: string;
+  wavepackPath?: string;
 }
 
-export interface DeploySettings {
-  deployMode: 'none' | 'local' | 'sftp';
+export interface CatalogDownloadRequest {
+  kind: 'vehicle' | 'animation';
+  id: string;
+  title: string;
+}
+
+export interface DesktopSettings {
+  outputFolder: string;
+  deployMode: DeployMode;
   localDeployFolder: string | null;
   sftpHost: string | null;
   sftpPort: number;
   sftpUsername: string | null;
   sftpRemotePath: string | null;
-}
-
-export interface DesktopSettings extends DeploySettings {
-  outputFolder: string | null;
   hasSftpPassword: boolean;
+  autoDownload: boolean;
+  notifyOnComplete: boolean;
+  revealOnComplete: boolean;
+  acceptDashboardCommands: boolean;
+  defaultTarget: ConversionTarget;
+  launchMinimized: boolean;
+  onboarded: boolean;
 }
 
-export type SaveDesktopSettings = Omit<DesktopSettings, 'hasSftpPassword'> & {
+export type SaveDesktopSettings = Partial<Omit<DesktopSettings, 'hasSftpPassword'>> & { sftpPassword?: string };
 
-  sftpPassword?: string;
-};
-
-export interface DeployOutcome {
-  deployed: boolean;
-  mode: 'none' | 'local' | 'sftp';
-  destination?: string;
-  error?: string;
+export interface ApiRequest {
+  method: 'GET' | 'POST' | 'DELETE';
+  path: string;
+  body?: unknown;
 }
 
-export interface ConvertResult {
-  outputZipPath: string;
-  resourceName: string;
-  fixLog: string[];
-  fromCache: boolean;
-  deploy?: DeployOutcome;
-}
+export type ApiResult<T = unknown> = { ok: true; data: T } | { ok: false; error: string; status: number };
 
-export interface ConvertOutcome {
-  ok: boolean;
-  result?: ConvertResult;
-  error?: string;
-}
+export type UpdateState =
+  | { state: 'idle' }
+  | { state: 'unsupported'; reason: string }
+  | { state: 'checking' }
+  | { state: 'available'; version: string; notes: string | null; installRequested: boolean }
+  | { state: 'downloading'; version: string; notes: string | null; percent: number; installRequested: boolean }
+  | { state: 'ready'; version: string; notes: string | null }
+  | { state: 'up-to-date' }
+  | { state: 'error'; message: string };
 
-export interface OversizedYtd {
-  name: string;
-  bytes: number;
-}
-
-export interface OptimizeResult {
-  outputZipPath: string;
-  resourceName: string;
-  category: OptimizeCategory;
-  fixLog: string[];
-  outputSizeBytes: number;
-}
-
-export interface OptimizeOutcome {
-  ok: boolean;
-  result?: OptimizeResult;
-  error?: string;
-}
-
-export type CatalogKind = 'vehicles' | 'map' | 'ped' | 'eup';
-
-export interface CatalogListItem {
-  id: string;
-  title: string;
-  author: string | null;
-  sourceUrl: string;
-  thumbnailUrl: string | null;
-}
-
-export interface CatalogListResponse {
-  entries: CatalogListItem[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
-
-export interface CatalogSearchRequest {
-  kind: CatalogKind;
-  search: string;
-  sort: string;
-  page: number;
+export interface AppInfo {
+  version: string;
+  platform: string;
+  arch: string;
+  apiBaseUrl: string;
+  deviceId: string;
+  credentialStorage: 'os-keychain' | 'file';
 }
 
 export interface PulseConvertDesktopAPI {
   platform: string;
-  version: string;
-  isDesktop: true;
+  getAppInfo: () => Promise<AppInfo>;
+
+  getAuthStatus: () => Promise<AuthStatus>;
+  onAuthStatus: (cb: (status: AuthStatus) => void) => () => void;
   startSignIn: () => void;
   cancelSignIn: () => void;
   signOut: () => void;
-  getAuthStatus: () => Promise<AuthStatus>;
-  onAuthStatusChange: (cb: (status: AuthStatus) => void) => () => void;
-  openExternal: (url: string) => void;
-  startConvert: (request: ConvertRequest | string) => Promise<ConvertOutcome>;
-  startOptimize: (request: OptimizeRequest) => Promise<OptimizeOutcome>;
-  onConvertProgress: (cb: (progress: OperationProgress) => void) => () => void;
-  showInFolder: (filePath: string) => void;
-  getSettings: () => Promise<DesktopSettings>;
-  saveSettings: (settings: SaveDesktopSettings) => Promise<{ ok: boolean; error?: string }>;
+
+  api: <T = unknown>(request: ApiRequest) => Promise<ApiResult<T>>;
+  resolveUrl: (path: string | null) => string | null;
+
+  getTasks: () => Promise<Task[]>;
+  onTasks: (cb: (tasks: Task[]) => void) => () => void;
+  startConvert: (request: ConvertRequest) => Promise<ApiResult<{ taskId: string }>>;
+  startOptimize: (request: OptimizeRequest) => Promise<ApiResult<{ taskId: string }>>;
+  startFix: (inputPath: string) => Promise<ApiResult<{ taskId: string }>>;
+  startSirenBuild: (request: SirenBuildRequest) => Promise<ApiResult<{ taskId: string }>>;
+  startMapInspect: (inputPath: string) => Promise<ApiResult<{ taskId: string }>>;
+  downloadCatalogItem: (request: CatalogDownloadRequest) => Promise<ApiResult<{ taskId: string }>>;
+  downloadJob: (jobId: string, title: string | null) => Promise<ApiResult<{ taskId: string }>>;
+  trackJob: (jobId: string, title: string | null) => Promise<ApiResult<{ taskId: string }>>;
+  deployOutput: (filePath: string) => Promise<ApiResult<{ taskId: string }>>;
+  cancelTask: (taskId: string) => void;
+  dismissTask: (taskId: string) => void;
+  clearFinishedTasks: () => void;
+
+  pickInputs: (mode: PickerMode, multiple: boolean) => Promise<SelectedInput[]>;
+  approveDroppedFiles: (files: File[]) => Promise<SelectedInput[]>;
+  readTextFile: (inputPath: string) => Promise<string | null>;
   chooseFolder: () => Promise<string | null>;
-  chooseInput: (kind: InputPickerKind) => Promise<SelectedInput | null>;
-  searchCatalog: (request: CatalogSearchRequest) => Promise<CatalogListResponse>;
+
+  fetchPreview: (source: { kind: 'job' | 'vehicle'; id: string }) => Promise<ApiResult<ArrayBuffer>>;
+  submitScreenshot: (jobId: string) => Promise<ApiResult<{ submitted: boolean }>>;
+
+  showInFolder: (filePath: string) => void;
+  openOutputFolder: () => void;
+  openExternal: (url: string) => void;
+
+  getSettings: () => Promise<DesktopSettings>;
+  saveSettings: (settings: SaveDesktopSettings) => Promise<ApiResult<DesktopSettings>>;
+  testSftp: () => Promise<ApiResult<{ fingerprint: string }>>;
+  forgetSftpHostKey: () => Promise<void>;
+
+  getUpdateState: () => Promise<UpdateState>;
+  onUpdateState: (cb: (state: UpdateState) => void) => () => void;
+  checkForUpdates: () => void;
+  installUpdate: () => void;
+
+  onNavigate: (cb: (route: string) => void) => () => void;
 }

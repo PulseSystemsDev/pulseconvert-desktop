@@ -1,0 +1,39 @@
+name: Screenshots
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['renderer/**', 'electron/**', 'scripts/**', 'package.json']
+  push:
+    branches-ignore: [master]
+    paths: ['renderer/**', 'electron/**', 'scripts/**', 'package.json']
+
+jobs:
+  screenshots:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            run: npm run screenshots
+          - name: Linux
+            os: ubuntu-latest
+            run: xvfb-run -a -s "-screen 0 1600x1000x24" npm run screenshots
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: ${{ matrix.run }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots-${{ matrix.name }}
+          path: screenshots/
+          if-no-files-found: warn

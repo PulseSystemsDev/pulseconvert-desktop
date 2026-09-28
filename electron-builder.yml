@@ -8,20 +8,26 @@ directories:
 
 files:
   - dist/**
-  - renderer/**
+  - assets/icon.png
   - "!**/*.map"
+  # ssh2's native add-ons are optional (pure-JS fallbacks); excluding them avoids native rebuilds.
+  - "!**/node_modules/cpu-features/**"
+  - "!**/node_modules/ssh2/lib/protocol/crypto/build/**"
+
+npmRebuild: false
 
 publish:
   provider: github
   owner: PulseSystemsDev
   repo: pulseconvert-desktop
+  releaseType: draft
 
 win:
   target:
     - target: nsis
       arch: [x64]
   icon: assets/icon.ico
-  artifactName: "PulseConvertDesktop-Setup-${version}.exe"
+  artifactName: "PulseConvertDesktop-Setup-${version}.${ext}"
 
 nsis:
   oneClick: false
@@ -30,6 +36,32 @@ nsis:
   createStartMenuShortcut: true
   shortcutName: Pulse Convert Desktop
   deleteAppDataOnUninstall: false
+
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+  icon: assets/icon.png
+  category: Development
+  executableName: pulseconvert-desktop
+  synopsis: Convert, optimize and deploy GTA V mods for FiveM
+  description: Pulse Convert Desktop converts GTA V mods into FiveM-ready resources, optimizes heavy resources, and deploys results to a local folder or over SFTP.
+  maintainer: Pulse Systems <support@pulsesystems.dev>
+  artifactName: "PulseConvertDesktop-${version}-${arch}.${ext}"
+
+deb:
+  depends:
+    - libgtk-3-0
+    - libnotify4
+    - libnss3
+    - libxss1
+    - libxtst6
+    - xdg-utils
+    - libatspi2.0-0
+    - libuuid1
+    - libsecret-1-0
 
 compression: maximum
 generateUpdatesFilesForAllChannels: true
