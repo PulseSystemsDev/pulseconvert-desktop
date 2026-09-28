@@ -56,7 +56,6 @@ export function Legend({ items }: { items: Array<{ label: string; color: string;
   );
 }
 
-/** Rounded-top rectangle path anchored square to the baseline. */
 function topRoundedRect(x: number, y: number, w: number, h: number, r: number): string {
   const radius = Math.min(r, w / 2, h);
   return `M${x},${y + h} V${y + radius} Q${x},${y} ${x + radius},${y} H${x + w - radius} Q${x + w},${y} ${x + w},${y + radius} V${y + h} Z`;
@@ -71,7 +70,6 @@ export interface DayPoint {
 const dayLabel = (day: string, style: 'short' | 'long' = 'short') =>
   new Date(`${day}T00:00:00Z`).toLocaleDateString(undefined, style === 'short' ? { month: 'short', day: 'numeric', timeZone: 'UTC' } : { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
 
-/** Stacked daily columns: finished at the base, failed on top, 2px surface gap between. */
 export function DailyBars({ days, height = 220 }: { days: DayPoint[]; height?: number }) {
   const [ref, width] = useWidth<HTMLDivElement>();
   const [hover, setHover] = useState<number | null>(null);
@@ -145,7 +143,6 @@ export interface SamplePoint {
   value: number;
 }
 
-/** Single-series line with a 10% area wash, end dot and crosshair tooltip. */
 export function Sparkline({ points, height = 120, unit }: { points: SamplePoint[]; height?: number; unit: (value: number) => string }) {
   const [ref, width] = useWidth<HTMLDivElement>();
   const [hover, setHover] = useState<number | null>(null);
@@ -202,7 +199,6 @@ export function Sparkline({ points, height = 120, unit }: { points: SamplePoint[
   );
 }
 
-/** Ranked horizontal bars, one hue, value at the tip. */
 export function RankedBars({ rows, color = CHART_COLORS.done }: { rows: Array<{ label: string; value: number }>; color?: string }) {
   const max = Math.max(1, ...rows.map((row) => row.value));
   return (

@@ -12,8 +12,6 @@ export interface CategoryInfo {
   placeholder: string;
 }
 
-// Mirrors the website's convert categories (src/lib/convertCategories.ts). The server detects the
-// real category from the files, so this choice only tailors the guidance shown here.
 export const CONVERT_CATEGORY_ORDER: ConvertCategory[] = ['vehicle', 'prop', 'map', 'eup', 'weapon', 'ped', 'animation'];
 
 export const CONVERT_CATEGORIES: Record<ConvertCategory, CategoryInfo> = {

@@ -1,7 +1,3 @@
-// Drives the real app against scripts/mock-server.js and saves a screenshot of every screen to
-// ./screenshots. Used by .github/workflows/screenshots.yml to check the UI on Windows and Linux;
-// run it locally with `npm run screenshots` after `npm run build` (on headless Linux, wrap it in
-// `xvfb-run -a`). All data on screen is the mock server's sample data.
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -65,7 +61,6 @@ async function main() {
   await win.fill('input[placeholder^="https://www.gta5-mods.com/vehicles"]', 'https://www.gta5-mods.com/vehicles/2024-porsche-911-gt3-rs');
   await win.click('main form button[type=submit]');
   await sleep(1200);
-  // Stand in for the native file picker so file-based flows can be exercised.
   await app.evaluate(({ dialog }, file) => {
     dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] });
   }, sample);

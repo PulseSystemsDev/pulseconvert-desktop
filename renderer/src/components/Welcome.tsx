@@ -14,9 +14,6 @@ const DESTINATIONS: Array<{ value: DeployMode; title: string; desc: string; icon
   { value: 'sftp', title: 'A remote server', desc: 'Upload over SFTP. You can fill in the details next.', icon: Server },
 ];
 
-/** Shown once after the first sign-in: picks the two things that decide whether the app feels
- *  "done" on day one - where files land and whether they get deployed. Everything is changeable
- *  later in Settings and Deploy, so it can be skipped. */
 export function Welcome({ settings, onDone }: { settings: DesktopSettings; onDone: (next: DesktopSettings) => void }) {
   const { data: account } = useAccount();
   const { navigate } = useRouter();

@@ -45,8 +45,6 @@ function titleFromUrl(url: string): string {
   }
 }
 
-/** Uploads a local archive, or zips-then-uploads a folder, reporting progress within the
- *  [from, to] slice of the task's overall percentage. */
 async function uploadInput(ctx: TaskContext, input: SelectedInput, from: number, to: number, label = 'Uploading'): Promise<string> {
   const release = await uploadSlots.acquire(ctx.signal);
   const temp = input.inputKind === 'folder' ? workDir('upload') : null;
@@ -147,8 +145,6 @@ async function maybeDeploy(ctx: TaskContext, outputPath: string): Promise<void> 
   ctx.update({ deploy: outcome });
 }
 
-/** Shared tail for every server job: wait for it, then (unless the user turned it off) pull the
- *  result down into the output folder and run the configured deploy. */
 async function finishServerJob(ctx: TaskContext, jobId: string, fallbackStem: string, from: number, alwaysDownload = false, suffix = ''): Promise<JobRecord> {
   ctx.update({ jobId });
   const job = await pollJob(ctx, jobId, from, 90);
@@ -247,7 +243,6 @@ export function startFix(input: SelectedInput): Task {
   return task;
 }
 
-/** Follows a job that was started somewhere else (the website, or before a restart). */
 export function trackJob(jobId: string, title: string | null, existing?: Task): Task {
   const task = existing ?? taskManager.create('job-download', title ?? 'Conversion', 'app', 'Server job');
   void taskManager.run(task, async (ctx) => {
@@ -281,7 +276,6 @@ export function downloadCatalogItem(request: CatalogDownloadRequest): Task {
       await maybeDeploy(ctx, outputPath);
     } catch (err) {
       if (!(err instanceof ApiError && err.status === 404)) throw err;
-      // No prebuilt copy yet - fall back to a normal server conversion of the catalog entry.
       ctx.progress('submitting', 'No prebuilt copy yet, starting a conversion', 5);
       const convertPath = request.kind === 'vehicle' ? `/api/vehicles/${encodeURIComponent(request.id)}/convert` : `/api/animations/${encodeURIComponent(request.id)}/convert`;
       const { jobId } = await postJson<{ jobId: string }>(convertPath, { conversionProfile: 'preserve', conversionTarget: config.get('defaultTarget') }, ctx.signal);
@@ -369,8 +363,6 @@ function detectResourceCategory(resourceFolder: string): OptimizeCategory {
   return 'textures';
 }
 
-/** Dashboard "optimize my server" command: optimizes every resource in the configured local
- *  deploy folder as its own task so each one shows up (and can fail) independently. */
 export async function optimizeDeployFolder(folder: string): Promise<{ scanned: number; optimized: number; outputs: string[]; errors: string[] }> {
   if (!fs.existsSync(folder) || !fs.statSync(folder).isDirectory()) throw new Error(`Deploy folder does not exist: ${folder}`);
   const candidates = fs.existsSync(path.join(folder, 'stream'))
@@ -408,8 +400,6 @@ export function waitForTask(taskId: string): Promise<Task> {
   });
 }
 
-/** Picks up tasks that were mid-flight when the app last closed. A job the server already has
- *  keeps being tracked; anything that never reached the server can't be resumed. */
 export function resumeInterruptedTasks(): void {
   for (const task of taskManager.interruptedTasks()) {
     if (task.jobId) {

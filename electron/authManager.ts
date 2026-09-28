@@ -152,16 +152,12 @@ export class AuthManager {
     const delay = Math.max(tokens.accessTokenExpiresAt - Date.now() - REFRESH_SKEW_MS, 5_000);
     this.refreshTimer = setTimeout(async () => {
       try {
-        // Shares apiClient's single-flight refresh so a request that happens to notice the
-        // expiry at the same moment never spends the same refresh token twice.
         await getValidAccessToken();
         const nextTokens = loadTokens();
         if (!nextTokens) return;
         this.setStatus({ state: 'signed-in', discordId: this.discordIdFromToken(nextTokens.accessToken) });
         this.scheduleRefresh(nextTokens);
       } catch (err) {
-        // Only a rejected refresh token ends the session. A network hiccup or a server blip
-        // retries shortly instead of silently signing the user out.
         if (err instanceof DeviceAuthError || (err instanceof ApiError && err.status === 401)) {
           log.warn('authManager: refresh token rejected, signing out', err);
           clearTokens();

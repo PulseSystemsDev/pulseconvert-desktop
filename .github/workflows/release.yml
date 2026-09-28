@@ -1,12 +1,6 @@
 name: Release
 
-# Push a tag like v2.0.1 (it must match package.json's version) to ship an update:
-#   1. prepare  - checks the tag matches package.json and opens a draft release
-#   2. build    - builds Windows + Linux on native runners and uploads into that draft
-#   3. publish  - once every build succeeded, publishes the release
-# Installed apps check GitHub for a newer published release on launch and every 4 hours,
-# download it in the background, and install it on restart. A failed build never publishes,
-# so users can't be offered a release with missing files.
+# Push a tag matching package.json's version (e.g. v2.1.0) to build and publish an update.
 on:
   push:
     tags: ['v*']

@@ -10,9 +10,7 @@ files:
   - dist/**
   - assets/icon.png
   - "!**/*.map"
-  # ssh2's two native add-ons are optional speedups with pure-JS fallbacks. Leaving them out
-  # means nothing needs compiling against Electron, so Windows and Linux builds are reproducible
-  # from any machine.
+  # ssh2's native add-ons are optional (pure-JS fallbacks); excluding them avoids native rebuilds.
   - "!**/node_modules/cpu-features/**"
   - "!**/node_modules/ssh2/lib/protocol/crypto/build/**"
 
@@ -22,7 +20,6 @@ publish:
   provider: github
   owner: PulseSystemsDev
   repo: pulseconvert-desktop
-  # CI publishes the release only after every platform finished uploading (release.yml).
   releaseType: draft
 
 win:

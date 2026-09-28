@@ -72,8 +72,6 @@ const store = new Store<DesktopConfig>({
   },
 });
 
-// Environment overrides win over the stored values (without being persisted) so a developer, or
-// the bundled mock server, can point one install at a different backend.
 export function apiBase(): string {
   return (process.env.PULSECONVERT_API_URL || store.get('apiBaseUrl')).replace(/\/+$/, '');
 }
