@@ -16,6 +16,8 @@ const ROUTES: Array<{ method: ApiRequest['method']; pattern: RegExp; auth: boole
   { method: 'GET', pattern: /^\/api\/queue$/, auth: true },
   { method: 'GET', pattern: /^\/api\/queue\/public$/, auth: false },
   { method: 'GET', pattern: /^\/api\/stats\/live$/, auth: false },
+  { method: 'GET', pattern: /^\/api\/stats\/history$/, auth: false },
+  { method: 'GET', pattern: /^\/api\/catalog\/showcase$/, auth: false },
   { method: 'GET', pattern: /^\/api\/public-stats$/, auth: false },
   { method: 'GET', pattern: /^\/api\/gallery$/, auth: false },
   { method: 'GET', pattern: /^\/api\/catalog\/vehicles\/list$/, auth: true },

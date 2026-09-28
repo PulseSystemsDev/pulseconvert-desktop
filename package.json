@@ -18,7 +18,8 @@
     "dist": "npm run build && electron-builder --publish never",
     "dist:win": "npm run build && electron-builder --win --publish never",
     "dist:linux": "npm run build && electron-builder --linux --publish never",
-    "release": "npm run build && electron-builder --publish always"
+    "release": "npm run build && electron-builder --publish always",
+    "screenshots": "node scripts/screenshots.js"
   },
   "dependencies": {
     "electron-log": "^5.2.0",
@@ -42,6 +43,7 @@
     "electron": "^43.0.0",
     "electron-builder": "^26.15.3",
     "lucide-react": "^1.48.0",
+    "playwright-core": "^1.63.0",
     "postcss": "^8.5.28",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

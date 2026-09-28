@@ -418,6 +418,18 @@ const server = http.createServer(async (req, res) => {
   if (path === '/api/stats/live') {
     return send(res, 200, { totalConverted: 48_217, totalFixesApplied: 312_904, totalBytesSaved: 2_870_000_000_000, catalogVehiclesIndexed: 11_482, activeNow: 9, avgConversionMs: 104_000, workerOnline: true });
   }
+  if (path === '/api/stats/history') {
+    const days = Array.from({ length: 30 }, (_, index) => {
+      const date = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate() - (29 - index)));
+      const weekend = [0, 6].includes(date.getUTCDay());
+      const done = Math.round(900 + index * 14 + (weekend ? 420 : 0) + 160 * Math.sin(index * 1.7));
+      return { day: date.toISOString().slice(0, 10), done, failed: Math.round(done * (0.035 + 0.02 * Math.abs(Math.cos(index)))) };
+    });
+    return send(res, 200, { days, byType: { url: 21_480, upload: 6_912, batch: 1_388, optimize: 2_107, fix: 634 } });
+  }
+  if (path === '/api/catalog/showcase') {
+    return send(res, 200, { vehicles: VEHICLES.map((vehicle) => ({ id: vehicle.id, title: vehicle.title, imageUrl: `/mock/thumb/${vehicle.id}.svg` })) });
+  }
   if (path === '/api/gallery') {
     return send(res, 200, { screenshots: Array.from({ length: 9 }, (_, index) => ({ id: `s${index}`, title: VEHICLES[index % VEHICLES.length].title, imageUrl: `/api/screenshots/s${index}/image`, submittedAt: iso(index * 86_400_000) })) });
   }

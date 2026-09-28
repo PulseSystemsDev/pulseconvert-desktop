@@ -550,6 +550,7 @@ function currentSettings(): DesktopSettings {
     acceptDashboardCommands: config.get('acceptDashboardCommands'),
     defaultTarget: config.get('defaultTarget'),
     launchMinimized: config.get('launchMinimized'),
+    onboarded: config.get('onboarded'),
   };
 }
 
@@ -601,6 +602,7 @@ ipcMain.handle('settings:save', (_event, value: unknown): ApiResult<DesktopSetti
       acceptDashboardCommands: booleanSetting(value.acceptDashboardCommands, previous.acceptDashboardCommands),
       defaultTarget: defaultTarget as ConversionTarget,
       launchMinimized: booleanSetting(value.launchMinimized, previous.launchMinimized),
+      onboarded: booleanSetting(value.onboarded, previous.onboarded),
     };
 
     if (value.sftpPassword !== undefined) {

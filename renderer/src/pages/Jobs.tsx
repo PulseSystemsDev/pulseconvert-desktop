@@ -51,6 +51,7 @@ function JobDrawer({ jobId, listItem, tasks, onClose, onChanged }: { jobId: stri
   };
 
   const title = job?.title ?? listItem?.title ?? 'Job';
+  const hasActions = !!job && ((job.status === 'done' && !!job.downloadUrl) || !!localTask?.outputPath || (!!running && !trackingTask) || (listItem?.sourceType === 'url' && !running));
   const fixLog = job?.fixLog ?? [];
 
   return (
@@ -66,7 +67,7 @@ function JobDrawer({ jobId, listItem, tasks, onClose, onChanged }: { jobId: stri
         </span>
       }
       footer={
-        job && (
+        hasActions && job && (
           <>
             {job.status === 'done' && job.downloadUrl && (
               <Button

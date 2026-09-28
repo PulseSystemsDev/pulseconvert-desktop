@@ -4,6 +4,16 @@ import { cx, formatBytes, formatDuration, timeAgo } from '../lib/format';
 import { Badge, IconButton, ProgressBar } from './ui';
 import { KIND_ICON, PHASE_LABEL, isActive, phaseIcon, phaseTone } from './taskMeta';
 
+const COMPACT_TONE: Record<string, string> = {
+  success: 'text-status-success',
+  danger: 'text-status-danger',
+  neutral: 'text-slate-400',
+  info: 'text-status-info',
+  orange: 'text-accent-orange',
+  teal: 'text-accent-teal',
+  warning: 'text-status-warning',
+};
+
 export function TaskRow({ task, compact, onOpen }: { task: Task; compact?: boolean; onOpen?: (task: Task) => void }) {
   const KindIcon = KIND_ICON[task.kind];
   const PhaseIcon = phaseIcon(task.phase);
@@ -24,11 +34,14 @@ export function TaskRow({ task, compact, onOpen }: { task: Task; compact?: boole
             <p className="min-w-0 flex-1 truncate text-sm font-semibold text-white" title={task.title}>
               {task.title}
             </p>
-            <Badge tone={tone} icon={PhaseIcon} className={active ? '[&>svg]:animate-spin' : undefined}>
-              {PHASE_LABEL[task.phase]}
-            </Badge>
+            {!compact && (
+              <Badge tone={tone} icon={PhaseIcon} className={active ? '[&>svg]:animate-spin' : undefined}>
+                {PHASE_LABEL[task.phase]}
+              </Badge>
+            )}
           </div>
           <p className={cx('mt-0.5 truncate text-xs', task.phase === 'failed' ? 'text-status-danger' : 'text-slate-500')} title={task.label}>
+            {compact && <span className={cx('mr-1.5 font-semibold', COMPACT_TONE[tone])}>{PHASE_LABEL[task.phase]} ·</span>}
             {task.subtitle && !active && task.phase !== 'failed' ? `${task.subtitle} · ` : ''}
             {task.label}
             {task.etaMs && task.phase === 'queued' ? ` · about ${formatDuration(task.etaMs)}` : ''}

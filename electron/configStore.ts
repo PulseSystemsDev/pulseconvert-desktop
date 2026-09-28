@@ -19,6 +19,7 @@ interface DesktopConfig {
   acceptDashboardCommands: boolean;
   defaultTarget: ConversionTarget;
   launchMinimized: boolean;
+  onboarded: boolean;
   windowBounds: { x?: number; y?: number; width: number; height: number; maximized: boolean } | null;
   taskHistory: Task[];
 }
@@ -43,6 +44,7 @@ const store = new Store<DesktopConfig>({
     acceptDashboardCommands: true,
     defaultTarget: 'addon',
     launchMinimized: false,
+    onboarded: false,
     windowBounds: null,
     taskHistory: [],
   },
@@ -64,6 +66,7 @@ const store = new Store<DesktopConfig>({
     acceptDashboardCommands: { type: 'boolean' },
     defaultTarget: { type: 'string', enum: ['addon', 'replace'] },
     launchMinimized: { type: 'boolean' },
+    onboarded: { type: 'boolean' },
     windowBounds: { type: ['object', 'null'] },
     taskHistory: { type: 'array' },
   },
