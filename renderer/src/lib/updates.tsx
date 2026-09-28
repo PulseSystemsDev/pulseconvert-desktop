@@ -5,8 +5,6 @@ import { useToast } from './toast';
 import { UpdatePrompt, isUpdateOffer } from '../components/UpdatePrompt';
 
 const SESSION_START = Date.now();
-// Found right after launch -> the popup. Found hours into a session (the 4-hourly check) -> a
-// quiet toast plus the title bar button, instead of a dialog interrupting whatever they're doing.
 const LAUNCH_WINDOW_MS = 3 * 60 * 1000;
 
 interface UpdateContextValue {

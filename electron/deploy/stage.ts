@@ -9,9 +9,6 @@ export interface StagedResource {
   cleanup: () => void;
 }
 
-/** Extracts a finished ZIP to a temp folder and works out which folder is the actual resource:
- *  either a top-level folder matching the resource name, a single top-level folder, or the
- *  archive root itself (for ZIPs that hold fxmanifest.lua directly). */
 export async function stageResource(zipPath: string, resourceName: string): Promise<StagedResource> {
   const root = path.join(os.tmpdir(), 'pulseconvert-desktop-deploy', `${resourceName}-${Date.now()}`);
   const cleanup = () => fs.rmSync(root, { recursive: true, force: true });

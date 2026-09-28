@@ -55,7 +55,6 @@ import type {
 log.transports.file.level = 'info';
 log.transports.console.level = 'debug';
 
-
 const authManager = new AuthManager();
 const ARCHIVE_OR_FOLDER = new Set<InputKind>(['archive', 'folder']);
 const OPTIMIZE_INPUTS = new Set<InputKind>(['archive', 'folder', 'file']);
@@ -191,7 +190,6 @@ function openExternal(value: unknown): void {
     if (url.protocol === 'https:' && allowedHosts.has(url.hostname)) void shell.openExternal(url.href);
     else log.warn('Blocked opening an external link to', url.hostname);
   } catch {
-    // Malformed input from the renderer is ignored.
   }
 }
 

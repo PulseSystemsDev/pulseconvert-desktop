@@ -17,8 +17,6 @@ interface ShowcaseVehicle {
   imageUrl: string;
 }
 
-/** A slowly drifting mosaic of real catalog vehicles behind the headline. Falls back to a plain
- *  glow when the catalog can't be reached, so a signed-out screen never shows broken images. */
 function Showcase() {
   const [images, setImages] = useState<ShowcaseVehicle[]>([]);
   const [loaded, setLoaded] = useState<Set<string>>(new Set());

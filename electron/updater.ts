@@ -22,8 +22,6 @@ export function onUpdateState(listener: (state: UpdateState) => void): () => voi
   return () => listeners.delete(listener);
 }
 
-// GitHub release notes arrive as HTML (or a list of per-version notes). The prompt shows them as
-// plain text, so strip the markup rather than rendering release HTML inside the app.
 function plainNotes(notes: unknown): string | null {
   const raw = Array.isArray(notes)
     ? notes.map((entry) => (entry && typeof entry === 'object' && 'note' in entry ? String((entry as { note: unknown }).note ?? '') : '')).join('\n')
@@ -52,14 +50,10 @@ function fakeUpdateVersion(): string | null {
 function updatesSupported(): string | null {
   if (fakeUpdateVersion()) return null;
   if (!app.isPackaged) return 'Updates are only checked in installed builds.';
-  // electron-updater can replace an AppImage or an NSIS install in place; a .deb is owned by the
-  // system package manager, so those installs update through a new download instead.
   if (process.platform === 'linux' && !process.env.APPIMAGE) return 'This install is managed by your package manager. Download new versions from the website.';
   return null;
 }
 
-// Dev/demo only (never in a packaged app): walks through available -> downloading -> ready so
-// the update prompt can be worked on without publishing a release.
 function runFakeUpdate(version: string): void {
   pending = { version, notes: '- New first-run setup\n- Charts on Live stats\n- Faster catalog search\n- Fixed a crash when WebGL is unavailable' };
   setState({ state: 'available', ...pending, installRequested });
@@ -93,8 +87,6 @@ export function checkForUpdates(): void {
   });
 }
 
-/** "Update now": restarts into the new version right away if it has downloaded, or as soon as
- *  the background download finishes. */
 export function installUpdate(): void {
   installRequested = true;
   if (state.state === 'ready') {
@@ -102,7 +94,6 @@ export function installUpdate(): void {
       log.info('[Updater] (fake) would restart and install now');
       return;
     }
-    // isSilent=false shows the Windows installer's progress; isForceRunAfter relaunches the app.
     autoUpdater.quitAndInstall(false, true);
     return;
   }
@@ -123,8 +114,7 @@ export function setupUpdater(): void {
 
   autoUpdater.logger = log;
   autoUpdater.autoDownload = true;
-  // The user decides when to install (the prompt on launch, or the title bar button). Installing
-  // silently on quit meant they never saw what changed and "remind me later" meant nothing.
+  // Deliberately off: the user chooses when to install via the update prompt.
   autoUpdater.autoInstallOnAppQuit = false;
 
   autoUpdater.on('checking-for-update', () => {

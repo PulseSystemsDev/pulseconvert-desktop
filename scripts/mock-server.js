@@ -1,7 +1,3 @@
-// A self-contained fake of Pulse Accounts + the Pulse Convert API, for UI work and demos without
-// touching production. Everything here is made-up sample data. Run with `npm run demo`, or start
-// it alone with `npm run mock` and point the app at it:
-//   PULSECONVERT_API_URL=http://127.0.0.1:4599 PULSE_ACCOUNTS_ISSUER=http://127.0.0.1:4599 npm start
 const http = require('http');
 const crypto = require('crypto');
 const yazl = require('yazl');
@@ -261,7 +257,6 @@ function sampleZip(name) {
 }
 
 function tinyGlb() {
-  // A minimal glTF 2.0 binary with one box mesh, so the 3D preview has something to render.
   const positions = [
     -1.6, -0.35, -0.8, 1.6, -0.35, -0.8, 1.6, 0.35, -0.8, -1.6, 0.35, -0.8, -1.6, -0.35, 0.8, 1.6, -0.35, 0.8, 1.6, 0.35, 0.8, -1.6, 0.35, 0.8,
     -0.8, 0.35, -0.7, 0.9, 0.35, -0.7, 0.6, 0.8, -0.6, -0.5, 0.8, -0.6, -0.8, 0.35, 0.7, 0.9, 0.35, 0.7, 0.6, 0.8, 0.6, -0.5, 0.8, 0.6,

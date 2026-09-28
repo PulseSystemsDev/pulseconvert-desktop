@@ -6,8 +6,6 @@ import { Box, RotateCcw } from 'lucide-react';
 import { pc } from '../lib/bridge';
 import { Spinner } from './ui';
 
-/** Renders a job's or catalog vehicle's preview GLB. The bytes come through the main process
- *  (which holds the auth token) and are parsed in memory - nothing is fetched from here. */
 export default function ModelViewer({ source }: { source: { kind: 'job' | 'vehicle'; id: string } }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const resetRef = useRef<() => void>(() => {});
@@ -22,8 +20,6 @@ export default function ModelViewer({ source }: { source: { kind: 'job' | 'vehic
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     } catch {
-      // No usable GPU/WebGL (remote desktops, some VMs, blocklisted drivers). Everything else in
-      // the app still works, so just say so here instead of crashing the window.
       setError('3D preview needs WebGL, which is not available on this computer.');
       setState('error');
       return;

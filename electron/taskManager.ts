@@ -70,8 +70,6 @@ export class TaskManager {
     }
   }
 
-  /** Tasks that were still running when the app last closed. The caller decides whether each
-   *  can be resumed (a submitted server job can; a half-finished upload can't). */
   interruptedTasks(): Task[] {
     return this.list().filter((task) => !isFinished(task));
   }
@@ -122,8 +120,6 @@ export class TaskManager {
     return task;
   }
 
-  /** Runs `runner` for an existing task and resolves with the final task state. Never rejects:
-   *  failures and cancellations are recorded on the task itself. */
   run(task: Task, runner: Runner): Promise<Task> {
     const controller = new AbortController();
     this.controllers.set(task.id, controller);

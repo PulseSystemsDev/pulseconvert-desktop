@@ -10,13 +10,10 @@ export function isUpdateOffer(state: UpdateState): state is Offer {
   return state.state === 'available' || state.state === 'downloading' || state.state === 'ready';
 }
 
-/** The "a new version is out" popup. Update now restarts into it (once it has downloaded);
- *  Remind me later hides it until the next launch. */
 export function UpdatePrompt({ update, tasks, onLater }: { update: Offer; tasks: Task[]; onLater: () => void }) {
   const ready = update.state === 'ready';
   const requested = update.state !== 'ready' && update.installRequested;
   const percent = update.state === 'downloading' ? update.percent : update.state === 'ready' ? 100 : null;
-  // Jobs already on the server resume after a restart; anything still uploading does not.
   const uploading = tasks.filter((task) => isActive(task) && !task.jobId).length;
 
   return (

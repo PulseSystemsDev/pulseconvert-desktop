@@ -15,7 +15,6 @@ function sftpTarget() {
 }
 
 export function resourceNameFor(zipPath: string): string {
-  // Output files are named <resource>[_optimized|_fixed][ (n)].zip - see files.ts uniqueOutputPath.
   return path.basename(zipPath).replace(/\.zip$/i, '').replace(/ \(\d+\)$/, '').replace(/_(optimized|fixed)$/, '');
 }
 
