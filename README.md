@@ -44,6 +44,10 @@ To point a normal launch at another backend:
 PULSECONVERT_API_URL=http://localhost:3007 PULSE_ACCOUNTS_ISSUER=http://localhost:8090 npm start
 ```
 
+To work on the update prompt without publishing a release, run a dev build with
+`PULSECONVERT_FAKE_UPDATE=2.1.0 npm run demo`. It fakes an update being found and downloaded.
+This is ignored in installed builds.
+
 On Linux, if Electron's sandbox helper isn't set up (common in containers), launch with
 `PULSECONVERT_NO_SANDBOX=1 npm start`.
 
@@ -54,9 +58,16 @@ npm run dist:win     # Windows NSIS installer (run on Windows)
 npm run dist:linux   # Linux AppImage + .deb
 ```
 
-Pushing a `v*` tag runs `.github/workflows/release.yml`, which builds both platforms on their own
-runners and attaches them to a draft GitHub release. The AppImage and the Windows install update
-themselves from published releases; `.deb` installs update through a new download.
+To ship an update, bump `version` in package.json and push a matching tag (`v2.1.0`).
+`.github/workflows/release.yml` builds Windows and Linux and publishes the release once both
+succeed. The release notes (auto-generated from commits, editable on GitHub) are what users see
+in the update popup.
+
+Installed apps check on launch and every 4 hours and download updates in the background. On
+launch, a popup shows what's new with **Update now** and **Remind me later** (which asks again
+next launch); an update found mid-session shows a toast and a title bar button instead. Nothing
+installs without the user choosing to. AppImage and Windows installs update in place; `.deb`
+installs update through a new download.
 
 ## Architecture
 

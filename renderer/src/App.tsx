@@ -6,6 +6,7 @@ import { useAuth, useSettings, useTasks } from './lib/hooks';
 import { setPendingInputs } from './lib/pendingInputs';
 import { RouterProvider, useRouter, type Route } from './lib/router';
 import { ToastProvider, useToast } from './lib/toast';
+import { UpdateProvider } from './lib/updates';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Sidebar } from './components/Sidebar';
 import { TitleBar } from './components/TitleBar';
@@ -156,6 +157,7 @@ export function App() {
   return (
     <ToastProvider>
       <RouterProvider>
+        <UpdateProvider>
         {status.state === 'signed-in' ? (
           <AccountProvider>
             <Workspace />
@@ -168,6 +170,7 @@ export function App() {
             </div>
           </div>
         )}
+        </UpdateProvider>
       </RouterProvider>
     </ToastProvider>
   );

@@ -103,7 +103,7 @@ function UpdatesSection({ info }: { info: AppInfo | null }) {
       : state.state === 'available'
         ? `Version ${state.version} found, downloading.`
         : state.state === 'downloading'
-          ? `Downloading ${state.version ?? 'update'} (${state.percent}%)`
+          ? `Downloading ${state.version} (${state.percent}%)`
           : state.state === 'ready'
             ? `Version ${state.version} is ready. Restart to finish updating.`
             : state.state === 'up-to-date'
