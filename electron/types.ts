@@ -188,9 +188,9 @@ export type UpdateState =
   | { state: 'idle' }
   | { state: 'unsupported'; reason: string }
   | { state: 'checking' }
-  | { state: 'available'; version: string }
-  | { state: 'downloading'; version: string | null; percent: number }
-  | { state: 'ready'; version: string }
+  | { state: 'available'; version: string; notes: string | null; installRequested: boolean }
+  | { state: 'downloading'; version: string; notes: string | null; percent: number; installRequested: boolean }
+  | { state: 'ready'; version: string; notes: string | null }
   | { state: 'up-to-date' }
   | { state: 'error'; message: string };
 

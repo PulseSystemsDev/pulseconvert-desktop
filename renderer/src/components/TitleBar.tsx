@@ -3,7 +3,8 @@ import { Activity, Download, Search } from 'lucide-react';
 import mark from '../assets/mark.png';
 import { pc, type Task } from '../lib/bridge';
 import { cx } from '../lib/format';
-import { useUpdateState } from '../lib/hooks';
+import { useUpdates } from '../lib/updates';
+import { isUpdateOffer } from './UpdatePrompt';
 import { useRouter } from '../lib/router';
 import { Kbd } from './ui';
 import { TaskRow } from './TaskRow';
@@ -18,7 +19,8 @@ export function TitleBar({ tasks, signedIn }: { tasks: Task[]; signedIn: boolean
   const active = tasks.filter(isActive);
   const recent = tasks.slice(0, 5);
   const mac = pc.platform === 'darwin';
-  const update = useUpdateState();
+  const { update, showPrompt } = useUpdates();
+  const offer = isUpdateOffer(update) ? update : null;
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -75,19 +77,22 @@ export function TitleBar({ tasks, signedIn }: { tasks: Task[]; signedIn: boolean
         </form>
       )}
 
-      {update.state === 'ready' && (
+      {offer && (
         <button
-          onClick={() => pc.installUpdate()}
-          title="Restarts the app and installs the update. Anything uploading is cancelled; jobs already on the server resume after the restart."
-          className={cx('no-drag flex h-8 items-center gap-2 rounded-lg bg-accent-teal px-2.5 text-xs font-bold text-bg-base transition-colors hover:bg-accent-teal/90', !signedIn && 'ml-auto')}
+          onClick={showPrompt}
+          className={cx(
+            'no-drag flex h-8 items-center gap-2 rounded-lg px-2.5 text-xs font-bold transition-colors',
+            offer.state === 'ready' ? 'bg-accent-teal text-bg-base hover:bg-accent-teal/90' : 'border border-accent-teal/40 text-accent-teal hover:bg-accent-teal/10',
+            !signedIn && 'ml-auto',
+          )}
         >
           <Download className="h-3.5 w-3.5" />
-          Restart to update to {update.version}
+          {offer.state === 'ready' ? `Update to ${offer.version}` : `${offer.version} available`}
         </button>
       )}
 
       {signedIn && (
-        <div className={cx('no-drag relative', update.state !== 'ready' && 'ml-auto')} ref={popRef}>
+        <div className={cx('no-drag relative', !offer && 'ml-auto')} ref={popRef}>
           <button
             onClick={() => setOpen((value) => !value)}
             className={cx(
