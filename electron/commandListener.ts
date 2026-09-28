@@ -1,7 +1,6 @@
 import log from 'electron-log';
-import config from './configStore';
-import { loadTokens } from './tokenStore';
-import { desktopFetchJson } from './apiClient';
+import { apiBase } from './configStore';
+import { desktopFetchJson, getValidAccessToken } from './apiClient';
 
 export interface DeviceCommand {
   id: string;
@@ -51,17 +50,18 @@ export class CommandListener {
   }
 
   private async connectOnce(generation: number): Promise<void> {
-    const tokens = loadTokens();
-    if (!tokens) {
-
+    let accessToken: string;
+    try {
+      accessToken = await getValidAccessToken();
+    } catch {
       await new Promise((resolve) => setTimeout(resolve, 10_000));
       return;
     }
 
     this.abortController = new AbortController();
-    const url = `${config.get('apiBaseUrl')}/api/desktop/devices/${this.deviceId}/events`;
+    const url = `${apiBase()}/api/desktop/devices/${this.deviceId}/events`;
     const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${tokens.accessToken}` },
+      headers: { Authorization: `Bearer ${accessToken}` },
       signal: this.abortController.signal,
     });
     if (!res.ok || !res.body) throw new Error(`Could not connect to command stream (${res.status})`);
@@ -80,7 +80,7 @@ export class CommandListener {
         const frame = buffer.slice(0, sepIndex);
         buffer = buffer.slice(sepIndex + 2);
         for (const line of frame.split('\n')) {
-          if (!line.startsWith('data: ')) continue; // skips ": ping" keepalive comment lines too
+          if (!line.startsWith('data: ')) continue;
           this.handleFrame(line.slice('data: '.length));
         }
       }
