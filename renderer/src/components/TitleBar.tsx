@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Activity, Search } from 'lucide-react';
+import { Activity, Download, Search } from 'lucide-react';
 import mark from '../assets/mark.png';
 import { pc, type Task } from '../lib/bridge';
 import { cx } from '../lib/format';
+import { useUpdateState } from '../lib/hooks';
 import { useRouter } from '../lib/router';
 import { Kbd } from './ui';
 import { TaskRow } from './TaskRow';
@@ -17,6 +18,7 @@ export function TitleBar({ tasks, signedIn }: { tasks: Task[]; signedIn: boolean
   const active = tasks.filter(isActive);
   const recent = tasks.slice(0, 5);
   const mac = pc.platform === 'darwin';
+  const update = useUpdateState();
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -73,8 +75,19 @@ export function TitleBar({ tasks, signedIn }: { tasks: Task[]; signedIn: boolean
         </form>
       )}
 
+      {update.state === 'ready' && (
+        <button
+          onClick={() => pc.installUpdate()}
+          title="Restarts the app and installs the update. Anything uploading is cancelled; jobs already on the server resume after the restart."
+          className={cx('no-drag flex h-8 items-center gap-2 rounded-lg bg-accent-teal px-2.5 text-xs font-bold text-bg-base transition-colors hover:bg-accent-teal/90', !signedIn && 'ml-auto')}
+        >
+          <Download className="h-3.5 w-3.5" />
+          Restart to update to {update.version}
+        </button>
+      )}
+
       {signedIn && (
-        <div className="no-drag relative ml-auto" ref={popRef}>
+        <div className={cx('no-drag relative', update.state !== 'ready' && 'ml-auto')} ref={popRef}>
           <button
             onClick={() => setOpen((value) => !value)}
             className={cx(
