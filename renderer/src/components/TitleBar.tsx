@@ -86,7 +86,7 @@ export function TitleBar({ tasks, signedIn }: { tasks: Task[]; signedIn: boolean
             {active.length ? `${active.length} running` : 'Activity'}
           </button>
           {open && (
-            <div className="absolute right-0 top-10 w-[380px] animate-rise rounded-xl border border-border bg-bg-surface p-3 shadow-panel">
+            <div className="absolute right-0 top-10 w-[420px] animate-rise rounded-xl border border-border bg-bg-surface p-3 shadow-panel">
               <div className="mb-2 flex items-center justify-between px-1">
                 <p className="eyebrow">On this device</p>
                 <button

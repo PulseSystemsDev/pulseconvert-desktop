@@ -34,9 +34,9 @@ function AccountSection() {
 
       <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
-          ['Jobs today', `${data.usage.jobs} / ${data.limits.maxJobsPerDay}`],
-          ['Data today', `${formatBytes(data.usage.bytes)} / ${formatBytes(data.limits.maxBytesPerDay)}`],
+          ['Jobs', data.stats.totalJobs.toLocaleString()],
           ['Finished', data.stats.doneJobs.toLocaleString()],
+          ['Success rate', data.stats.totalJobs ? `${Math.round((data.stats.doneJobs / data.stats.totalJobs) * 100)}%` : '-'],
           ['Delivered', formatBytes(data.stats.totalOutputBytes)],
         ].map(([label, value]) => (
           <div key={label} className="rounded-lg border border-border-subtle bg-bg-base/60 p-3">

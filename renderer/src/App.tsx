@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { Loader2, UploadCloud } from 'lucide-react';
 import { pc, type Task } from './lib/bridge';
 import { AccountProvider } from './lib/account';
-import { useAuth, useTasks } from './lib/hooks';
+import { useAuth, useSettings, useTasks } from './lib/hooks';
 import { setPendingInputs } from './lib/pendingInputs';
 import { RouterProvider, useRouter, type Route } from './lib/router';
 import { ToastProvider, useToast } from './lib/toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Sidebar } from './components/Sidebar';
 import { TitleBar } from './components/TitleBar';
+import { Welcome } from './components/Welcome';
 import { isActive } from './components/taskMeta';
 import { SignIn } from './pages/SignIn';
 import { Home } from './pages/Home';
@@ -80,6 +81,7 @@ function Workspace() {
   const [dragging, setDragging] = useState(false);
   const depth = useRef(0);
   const scrollRef = useRef<HTMLElement>(null);
+  const [settings, setSettings] = useSettings();
   useCompletionToasts(tasks);
 
   useEffect(() => pc.onNavigate((target) => navigate(target === 'activity' ? 'jobs' : (target as Route))), [navigate]);
@@ -126,6 +128,7 @@ function Workspace() {
           </div>
         </main>
       </div>
+      {settings && !settings.onboarded && <Welcome settings={settings} onDone={setSettings} />}
       {dragging && (
         <div className="pointer-events-none fixed inset-0 top-11 z-[70] flex animate-fade-in items-center justify-center bg-bg-base/80 backdrop-blur-sm">
           <div className="rounded-2xl border-2 border-dashed border-accent-orange bg-accent-orange/[0.06] px-16 py-12 text-center">

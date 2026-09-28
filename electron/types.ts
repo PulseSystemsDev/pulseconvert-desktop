@@ -171,6 +171,7 @@ export interface DesktopSettings {
   acceptDashboardCommands: boolean;
   defaultTarget: ConversionTarget;
   launchMinimized: boolean;
+  onboarded: boolean;
 }
 
 export type SaveDesktopSettings = Partial<Omit<DesktopSettings, 'hasSftpPassword'>> & { sftpPassword?: string };

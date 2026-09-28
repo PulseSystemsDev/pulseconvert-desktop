@@ -11,6 +11,53 @@ const FEATURES = [
   { icon: Rocket, title: 'Deploy straight to your server', desc: 'Drop results into a local resources folder or push them over SFTP.' },
 ];
 
+interface ShowcaseVehicle {
+  id: string;
+  title: string;
+  imageUrl: string;
+}
+
+/** A slowly drifting mosaic of real catalog vehicles behind the headline. Falls back to a plain
+ *  glow when the catalog can't be reached, so a signed-out screen never shows broken images. */
+function Showcase() {
+  const [images, setImages] = useState<ShowcaseVehicle[]>([]);
+  const [loaded, setLoaded] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    void pc.api<{ vehicles: ShowcaseVehicle[] }>({ method: 'GET', path: '/api/catalog/showcase' }).then((result) => {
+      if (result.ok) setImages(result.data.vehicles.slice(0, 12));
+    });
+  }, []);
+  const columns = [0, 1, 2].map((column) => images.filter((_, index) => index % 3 === column));
+
+  return (
+    <div className="pointer-events-none absolute inset-0">
+      <div className="absolute -left-40 -top-40 h-[520px] w-[520px] rounded-full bg-accent-orange/10 blur-[120px]" />
+      {images.length >= 6 && (
+        <div className="absolute -left-10 -right-10 -top-16 flex h-[72%] rotate-[-6deg] gap-3">
+          {columns.map((column, index) => (
+            <div key={index} className="flex flex-1 animate-[drift_60s_linear_infinite] flex-col gap-3" style={{ animationDirection: index === 1 ? 'reverse' : 'normal', marginTop: index === 1 ? -80 : 0 }}>
+              {[...column, ...column].map((vehicle, position) => (
+                <img
+                  key={`${vehicle.id}-${position}`}
+                  src={pc.resolveUrl(vehicle.imageUrl) ?? undefined}
+                  alt=""
+                  draggable={false}
+                  onLoad={() => setLoaded((current) => new Set(current).add(vehicle.id))}
+                  onError={(event) => (event.currentTarget.style.display = 'none')}
+                  className="aspect-video w-full rounded-lg object-cover transition-opacity duration-700"
+                  style={{ opacity: loaded.has(vehicle.id) ? 0.55 : 0 }}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="absolute inset-0 bg-gradient-to-b from-bg-surface/40 via-bg-surface/70 to-bg-surface" />
+      <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-bg-surface via-bg-surface/95 to-transparent" />
+    </div>
+  );
+}
+
 function useCountdown(expiresAt: number | null): string {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -40,30 +87,25 @@ export function SignIn({ status }: { status: AuthStatus }) {
 
   return (
     <div className="flex h-full overflow-y-auto">
-      <div className="relative hidden w-[46%] max-w-[620px] flex-col justify-center gap-16 overflow-hidden border-r border-border-subtle bg-bg-surface p-12 lg:flex">
-        <div className="pointer-events-none absolute -left-40 -top-40 h-[520px] w-[520px] rounded-full bg-accent-orange/10 blur-[120px]" />
-        <div className="relative">
-          <img src={mark} alt="" className="h-12 w-12" />
-          <h1 className="mt-8 text-[34px] font-bold leading-[1.1] tracking-[-0.02em] text-white">
+      <div className="relative hidden w-[46%] max-w-[640px] flex-col overflow-hidden border-r border-border-subtle bg-bg-surface lg:flex">
+        <Showcase />
+        <div className="relative mt-auto p-12 pt-0">
+          <img src={mark} alt="" className="h-11 w-11" />
+          <h1 className="mt-6 text-[34px] font-bold leading-[1.1] tracking-[-0.02em] text-white">
             GTA V mods to
             <br />
             FiveM-ready resources.
           </h1>
-          <p className="mt-4 max-w-[42ch] text-[15px] leading-relaxed text-slate-400">Everything Pulse Convert does on the web, in an app that keeps working while you do other things.</p>
+          <p className="mt-3 max-w-[42ch] text-[15px] leading-relaxed text-slate-400">Everything Pulse Convert does on the web, in an app that keeps working while you do other things.</p>
+          <ul className="mt-8 grid grid-cols-2 gap-x-6 gap-y-4">
+            {FEATURES.map(({ icon: Icon, title }) => (
+              <li key={title} className="flex items-center gap-2.5 text-[13px] font-medium text-slate-300">
+                <Icon className="h-4 w-4 shrink-0 text-accent-orange" />
+                {title}
+              </li>
+            ))}
+          </ul>
         </div>
-        <ul className="relative space-y-5">
-          {FEATURES.map(({ icon: Icon, title, desc }) => (
-            <li key={title} className="flex gap-4">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-bg-elevated">
-                <Icon className="h-4 w-4 text-accent-orange" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-white">{title}</p>
-                <p className="mt-0.5 text-[13px] leading-relaxed text-slate-500">{desc}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
       </div>
 
       <div className="flex flex-1 items-center justify-center p-10">
