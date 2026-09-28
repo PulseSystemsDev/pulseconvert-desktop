@@ -22,6 +22,8 @@ publish:
   provider: github
   owner: PulseSystemsDev
   repo: pulseconvert-desktop
+  # CI publishes the release only after every platform finished uploading (release.yml).
+  releaseType: draft
 
 win:
   target:
