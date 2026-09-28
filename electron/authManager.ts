@@ -1,7 +1,8 @@
 import log from 'electron-log';
-import config from './configStore';
+import { accountsIssuer, clientId } from './configStore';
 import { loadTokens, saveTokens, clearTokens } from './tokenStore';
-import { startDeviceAuthorization, pollDeviceToken, refreshAccessToken, DeviceAuthError } from './deviceAuth';
+import { startDeviceAuthorization, pollDeviceToken, DeviceAuthError } from './deviceAuth';
+import { ApiError, getValidAccessToken } from './apiClient';
 import type { AuthStatus, TokenSet } from './types';
 
 function unsafeDecodeJwtPayload(jwt: string): Record<string, unknown> | null {
@@ -22,8 +23,6 @@ export class AuthManager {
   private pollTimer: ReturnType<typeof setTimeout> | null = null;
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private signInGeneration = 0;
-
-  constructor() {}
 
   async initialize(): Promise<void> {
     const stored = loadTokens();
@@ -59,7 +58,7 @@ export class AuthManager {
 
     let authorization;
     try {
-      authorization = await startDeviceAuthorization(config.get('accountsIssuer'), config.get('clientId'));
+      authorization = await startDeviceAuthorization(accountsIssuer(), clientId());
     } catch (err) {
       if (generation !== this.signInGeneration) return;
       this.setStatus({ state: 'error', message: (err as Error).message });
@@ -88,7 +87,7 @@ export class AuthManager {
 
       let result;
       try {
-        result = await pollDeviceToken(config.get('accountsIssuer'), config.get('clientId'), deviceCode);
+        result = await pollDeviceToken(accountsIssuer(), clientId(), deviceCode);
       } catch (err) {
         if (generation !== this.signInGeneration) return;
         if (err instanceof DeviceAuthError && err.code === 'access_denied') {
@@ -153,21 +152,24 @@ export class AuthManager {
     const delay = Math.max(tokens.accessTokenExpiresAt - Date.now() - REFRESH_SKEW_MS, 5_000);
     this.refreshTimer = setTimeout(async () => {
       try {
-        const refreshed = await refreshAccessToken(config.get('accountsIssuer'), config.get('clientId'), tokens.refreshToken!);
-        const nextTokens: TokenSet = {
-          accessToken: refreshed.accessToken,
-          refreshToken: refreshed.refreshToken,
-          accessTokenExpiresAt: Date.now() + refreshed.expiresIn * 1000,
-          scope: refreshed.scope,
-        };
-        saveTokens(nextTokens);
+        // Shares apiClient's single-flight refresh so a request that happens to notice the
+        // expiry at the same moment never spends the same refresh token twice.
+        await getValidAccessToken();
+        const nextTokens = loadTokens();
+        if (!nextTokens) return;
         this.setStatus({ state: 'signed-in', discordId: this.discordIdFromToken(nextTokens.accessToken) });
         this.scheduleRefresh(nextTokens);
       } catch (err) {
-
-        log.warn('authManager: refresh failed, signing out', err);
-        clearTokens();
-        this.setStatus({ state: 'signed-out' });
+        // Only a rejected refresh token ends the session. A network hiccup or a server blip
+        // retries shortly instead of silently signing the user out.
+        if (err instanceof DeviceAuthError || (err instanceof ApiError && err.status === 401)) {
+          log.warn('authManager: refresh token rejected, signing out', err);
+          clearTokens();
+          this.setStatus({ state: 'signed-out' });
+          return;
+        }
+        log.warn('authManager: refresh failed, retrying in 30s', err);
+        this.refreshTimer = setTimeout(() => this.scheduleRefresh(loadTokens() ?? tokens), 30_000);
       }
     }, delay);
   }

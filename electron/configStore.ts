@@ -1,40 +1,34 @@
 import Store from 'electron-store';
+import type { ConversionTarget, DeployMode, Task } from './types';
 
 interface DesktopConfig {
-
   accountsIssuer: string;
-
   clientId: string;
-
   apiBaseUrl: string;
-
-  blenderPath: string | null;
-
-  rpfToolPath: string | null;
-
-  sevenZipPath: string | null;
-
   outputFolder: string | null;
-
   deviceId: string | null;
-
-  deployMode: 'none' | 'local' | 'sftp';
+  deployMode: DeployMode;
   localDeployFolder: string | null;
   sftpHost: string | null;
   sftpPort: number;
   sftpUsername: string | null;
   sftpRemotePath: string | null;
+  autoDownload: boolean;
+  notifyOnComplete: boolean;
+  revealOnComplete: boolean;
+  acceptDashboardCommands: boolean;
+  defaultTarget: ConversionTarget;
+  launchMinimized: boolean;
+  windowBounds: { x?: number; y?: number; width: number; height: number; maximized: boolean } | null;
+  taskHistory: Task[];
 }
 
 const store = new Store<DesktopConfig>({
   name: 'pulseconvert-desktop-config',
   defaults: {
-    accountsIssuer: process.env.PULSE_ACCOUNTS_ISSUER || 'https://accounts.pulsesystems.dev',
-    clientId: process.env.PULSE_ACCOUNTS_DESKTOP_CLIENT_ID || 'pulseconvert-desktop',
-    apiBaseUrl: process.env.PULSECONVERT_API_URL || 'https://convert.pulsesystems.dev',
-    blenderPath: null,
-    rpfToolPath: null,
-    sevenZipPath: null,
+    accountsIssuer: 'https://accounts.pulsesystems.dev',
+    clientId: 'pulseconvert-desktop',
+    apiBaseUrl: 'https://convert.pulsesystems.dev',
     outputFolder: null,
     deviceId: null,
     deployMode: 'none',
@@ -43,14 +37,19 @@ const store = new Store<DesktopConfig>({
     sftpPort: 22,
     sftpUsername: null,
     sftpRemotePath: null,
+    autoDownload: true,
+    notifyOnComplete: true,
+    revealOnComplete: false,
+    acceptDashboardCommands: true,
+    defaultTarget: 'addon',
+    launchMinimized: false,
+    windowBounds: null,
+    taskHistory: [],
   },
   schema: {
     accountsIssuer: { type: 'string' },
     clientId: { type: 'string' },
     apiBaseUrl: { type: 'string' },
-    blenderPath: { type: ['string', 'null'] },
-    rpfToolPath: { type: ['string', 'null'] },
-    sevenZipPath: { type: ['string', 'null'] },
     outputFolder: { type: ['string', 'null'] },
     deviceId: { type: ['string', 'null'] },
     deployMode: { type: 'string', enum: ['none', 'local', 'sftp'] },
@@ -59,7 +58,29 @@ const store = new Store<DesktopConfig>({
     sftpPort: { type: 'number' },
     sftpUsername: { type: ['string', 'null'] },
     sftpRemotePath: { type: ['string', 'null'] },
+    autoDownload: { type: 'boolean' },
+    notifyOnComplete: { type: 'boolean' },
+    revealOnComplete: { type: 'boolean' },
+    acceptDashboardCommands: { type: 'boolean' },
+    defaultTarget: { type: 'string', enum: ['addon', 'replace'] },
+    launchMinimized: { type: 'boolean' },
+    windowBounds: { type: ['object', 'null'] },
+    taskHistory: { type: 'array' },
   },
 });
+
+// Environment overrides win over the stored values (without being persisted) so a developer, or
+// the bundled mock server, can point one install at a different backend.
+export function apiBase(): string {
+  return (process.env.PULSECONVERT_API_URL || store.get('apiBaseUrl')).replace(/\/+$/, '');
+}
+
+export function accountsIssuer(): string {
+  return process.env.PULSE_ACCOUNTS_ISSUER || store.get('accountsIssuer');
+}
+
+export function clientId(): string {
+  return process.env.PULSE_ACCOUNTS_DESKTOP_CLIENT_ID || store.get('clientId');
+}
 
 export default store;
