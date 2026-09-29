@@ -81,17 +81,19 @@ async function main() {
     await win.fill('input[placeholder^="https://"]', url);
     await win.click('button:has-text("Add link")');
   }
-  await win.click('text=Options');
   await shot('06-convert-pack');
   await nav('Fix resource');
   await shot('08-fix');
 
   await nav('Catalog');
   await shot('09-catalog');
+  await win.click('button[aria-label="Sort"]');
+  await shot('09b-catalog-sort');
+  await win.keyboard.press('Escape');
   await win.locator('article').first().click();
   await sleep(900);
   await win.click('button:has-text("View in 3D")');
-  await sleep(2500);
+  await sleep(process.env.MOCK_PREVIEW_GLB ? 8000 : 2500);
   await shot('10-catalog-3d');
   await win.keyboard.press('Escape');
   await nav('Gallery');

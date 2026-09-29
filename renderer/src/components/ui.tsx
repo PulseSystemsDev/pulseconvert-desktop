@@ -1,5 +1,5 @@
-import { useEffect, type ButtonHTMLAttributes, type ReactNode } from 'react';
-import { Loader2, X, type LucideIcon } from 'lucide-react';
+import { useEffect, useRef, useState, type ButtonHTMLAttributes, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
+import { Check, ChevronDown, Loader2, X, type LucideIcon } from 'lucide-react';
 import { cx } from '../lib/format';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'teal';
@@ -173,6 +173,100 @@ export function Segmented<T extends string>({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+export function Select<T extends string>({
+  value,
+  onChange,
+  options,
+  label,
+  icon: Icon,
+  className,
+}: {
+  value: T;
+  onChange: (value: T) => void;
+  options: Array<{ value: T; label: string }>;
+  label: string;
+  icon?: LucideIcon;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const root = useRef<HTMLDivElement>(null);
+  const current = options.find((option) => option.value === value) ?? options[0];
+
+  useEffect(() => {
+    if (!open) return;
+    setActive(Math.max(0, options.findIndex((option) => option.value === value)));
+    const onDown = (event: MouseEvent) => {
+      if (!root.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+
+  const pick = (next: T) => {
+    onChange(next);
+    setOpen(false);
+  };
+
+  const onKeyDown = (event: ReactKeyboardEvent) => {
+    if (event.key === 'Escape') return setOpen(false);
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (!open) return setOpen(true);
+      const step = event.key === 'ArrowDown' ? 1 : -1;
+      setActive((index) => (index + step + options.length) % options.length);
+    }
+    if ((event.key === 'Enter' || event.key === ' ') && open) {
+      event.preventDefault();
+      pick(options[active].value);
+    }
+  };
+
+  return (
+    <div ref={root} className={cx('relative', className)} onKeyDown={onKeyDown}>
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={label}
+        onClick={() => setOpen((value) => !value)}
+        className={cx(
+          'inline-flex h-9 w-full items-center gap-2 rounded-lg border bg-bg-base px-3 text-[13px] font-medium text-slate-200 transition-colors',
+          open ? 'border-accent-orange/60' : 'border-border-subtle hover:border-border-strong',
+        )}
+      >
+        {Icon && <Icon className="h-3.5 w-3.5 text-slate-500" />}
+        <span className="flex-1 truncate text-left">{current?.label}</span>
+        <ChevronDown className={cx('h-3.5 w-3.5 text-slate-500 transition-transform', open && 'rotate-180')} />
+      </button>
+      {open && (
+        <ul role="listbox" aria-label={label} className="absolute right-0 z-30 mt-1.5 min-w-full overflow-hidden rounded-lg border border-border bg-bg-elevated p-1 shadow-xl shadow-black/40">
+          {options.map((option, index) => {
+            const selected = option.value === value;
+            return (
+              <li
+                key={option.value}
+                role="option"
+                aria-selected={selected}
+                onMouseEnter={() => setActive(index)}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => pick(option.value)}
+                className={cx(
+                  'flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-md px-2.5 py-2 text-[13px]',
+                  index === active ? 'bg-bg-hover text-white' : 'text-slate-300',
+                )}
+              >
+                <span className="flex-1">{option.label}</span>
+                {selected && <Check className="h-3.5 w-3.5 text-accent-orange" />}
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }

@@ -39,7 +39,7 @@ function QuickConvert() {
   const submit = async () => {
     if (!trimmed || invalid) return;
     setBusy(true);
-    const result = await pc.startConvert({ urls: [trimmed], inputs: [], profile: 'preserve', target: (await pc.getSettings()).defaultTarget, packBundleMode: 'separate' });
+    const result = await pc.startConvert({ urls: [trimmed], inputs: [], profile: 'preserve', target: 'addon', packBundleMode: 'separate' });
     setBusy(false);
     if (result.ok) {
       setUrl('');

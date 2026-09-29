@@ -289,13 +289,9 @@ function parseSourceUrl(value: unknown): string {
 }
 
 function parseConvertOptions(raw: Record<string, unknown>): { profile: ConversionProfile; target: ConversionTarget; packBundleMode: 'separate' | 'single' } {
-  const profile = raw.profile ?? raw.conversionProfile ?? 'preserve';
-  const target = raw.target ?? raw.conversionTarget ?? config.get('defaultTarget');
   const packBundleMode = raw.packBundleMode ?? 'separate';
-  if (profile !== 'preserve' && profile !== 'performance') throw new Error('Invalid conversion profile.');
-  if (target !== 'addon' && target !== 'replace') throw new Error('Invalid conversion target.');
   if (packBundleMode !== 'separate' && packBundleMode !== 'single') throw new Error('Invalid pack mode.');
-  return { profile, target, packBundleMode };
+  return { profile: 'preserve', target: 'addon', packBundleMode };
 }
 
 async function handleDeviceCommand(command: DeviceCommand): Promise<{ ok: boolean; result?: unknown; error?: string }> {

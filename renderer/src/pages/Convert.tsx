@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Archive, ChevronDown, FileText, FolderOpen, Layers, Link2, Plus, RefreshCw, Rocket, X } from 'lucide-react';
-import { pc, type ConversionProfile, type ConversionTarget, type SelectedInput } from '../lib/bridge';
+import { useMemo, useState } from 'react';
+import { Archive, FileText, FolderOpen, Layers, Link2, Plus, RefreshCw, Rocket, X } from 'lucide-react';
+import { pc, type SelectedInput } from '../lib/bridge';
 import { CONVERT_CATEGORIES, CONVERT_CATEGORY_ORDER, type ConvertCategory } from '../lib/content';
 import { cx, formatBytes, isSupportedSourceUrl } from '../lib/format';
 import { useSettings } from '../lib/hooks';
@@ -27,15 +27,8 @@ export function Convert() {
     return initial;
   });
   const [draft, setDraft] = useState('');
-  const [target, setTarget] = useState<ConversionTarget>('addon');
-  const [profile, setProfile] = useState<ConversionProfile>('preserve');
   const [packMode, setPackMode] = useState<'separate' | 'single'>('separate');
-  const [advanced, setAdvanced] = useState(false);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (settings) setTarget(settings.defaultTarget);
-  }, [settings?.defaultTarget]);
 
   const info = CONVERT_CATEGORIES[category];
   const trimmedDraft = draft.trim();
@@ -83,7 +76,7 @@ export function Convert() {
     const inputs = items.filter((item) => item.kind === 'input').map((item) => (item as { input: SelectedInput }).input.inputPath);
     if (urls.length + inputs.length === 0) return;
     setBusy(true);
-    const result = await pc.startConvert({ urls, inputs, profile, target, packBundleMode: packMode });
+    const result = await pc.startConvert({ urls, inputs, profile: 'preserve', target: 'addon', packBundleMode: packMode });
     setBusy(false);
     if (!result.ok) {
       toast.error('Could not start the conversion', result.error);
@@ -217,63 +210,22 @@ export function Convert() {
             )}
           </Card>
 
-          <Card>
-            <button className="flex w-full items-center justify-between text-left" onClick={() => setAdvanced((value) => !value)}>
-              <span>
-                <span className="block text-[15px] font-semibold text-white">Options</span>
-                <span className="mt-0.5 block text-[13px] text-slate-500">
-                  {target === 'addon' ? 'Add-on' : 'Replacement'} · {profile === 'preserve' ? 'Full quality' : 'Performance'}
-                  {isPack ? ` · ${packMode === 'separate' ? 'One resource per item' : 'Single combined resource'}` : ''}
-                </span>
-              </span>
-              <ChevronDown className={cx('h-4 w-4 text-slate-500 transition-transform', advanced && 'rotate-180')} />
-            </button>
-            {advanced && (
-              <div className="mt-5 grid gap-5 border-t border-border-subtle pt-5 md:grid-cols-2">
-                <div>
-                  <p className="mb-2 text-[13px] font-medium text-slate-300">Install as</p>
-                  <Segmented
-                    value={target}
-                    onChange={setTarget}
-                    options={[
-                      { value: 'addon', label: 'Add-on' },
-                      { value: 'replace', label: 'Replacement' },
-                    ]}
-                  />
-                  <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                    {target === 'addon' ? 'Spawns alongside everything else under its own name.' : 'Replaces the matching base-game vehicle.'}
-                  </p>
-                </div>
-                <div>
-                  <p className="mb-2 text-[13px] font-medium text-slate-300">Textures</p>
-                  <Segmented
-                    value={profile}
-                    onChange={setProfile}
-                    options={[
-                      { value: 'preserve', label: 'Full quality' },
-                      { value: 'performance', label: 'Performance' },
-                    ]}
-                  />
-                  <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                    {profile === 'preserve' ? 'Keeps original resolution, only splits what FiveM cannot stream.' : 'Downscales large textures for busy servers.'}
-                  </p>
-                </div>
-                {isPack && (
-                  <div className="md:col-span-2">
-                    <p className="mb-2 text-[13px] font-medium text-slate-300">Pack output</p>
-                    <Segmented
-                      value={packMode}
-                      onChange={setPackMode}
-                      options={[
-                        { value: 'separate', label: 'Separate resources' },
-                        { value: 'single', label: 'One combined resource' },
-                      ]}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-          </Card>
+          {isPack && category === 'vehicle' && (
+            <Card>
+              <p className="text-[15px] font-semibold text-white">Pack output</p>
+              <p className="mt-0.5 mb-4 text-[13px] text-slate-500">
+                {packMode === 'separate' ? 'Each car gets its own folder and fxmanifest.lua.' : 'Every car in one folder with a single fxmanifest.lua.'}
+              </p>
+              <Segmented
+                value={packMode}
+                onChange={setPackMode}
+                options={[
+                  { value: 'separate', label: 'One resource per car' },
+                  { value: 'single', label: 'One merged resource' },
+                ]}
+              />
+            </Card>
+          )}
         </div>
 
         <aside className="space-y-5">

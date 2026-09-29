@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import {
+  ArrowUpDown,
   Box,
   CarFront,
   ChevronLeft,
@@ -23,7 +24,7 @@ import { compactNumber, cx } from '../lib/format';
 import { useApi, useDebounced } from '../lib/hooks';
 import { useRouter } from '../lib/router';
 import { useToast } from '../lib/toast';
-import { Badge, Button, Drawer, EmptyState, ErrorNote, IconButton, PageHeader, Segmented, Skeleton, Spinner } from '../components/ui';
+import { Badge, Button, Drawer, EmptyState, ErrorNote, IconButton, PageHeader, Segmented, Select, Skeleton, Spinner } from '../components/ui';
 
 const ModelViewer = lazy(() => import('../components/ModelViewer'));
 
@@ -113,8 +114,7 @@ function useEntryActions(kind: Kind) {
 
   const convert = async (entry: Entry) => {
     setWorking(entry.id);
-    const settings = await pc.getSettings();
-    const result = await pc.startConvert({ urls: [entry.sourceUrl], inputs: [], profile: 'preserve', target: settings.defaultTarget, packBundleMode: 'separate' });
+    const result = await pc.startConvert({ urls: [entry.sourceUrl], inputs: [], profile: 'preserve', target: 'addon', packBundleMode: 'separate' });
     setWorking(null);
     if (result.ok) toast.success('Conversion started', entry.title, { label: 'Open Jobs', onClick: () => navigate('jobs') });
     else toast.error('Could not start', result.error);
@@ -317,16 +317,25 @@ export function Catalog() {
 
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <Segmented value={kind} onChange={(value) => setKind(value)} options={KINDS} />
-        <div className="relative ml-auto w-full max-w-[320px]">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name, author or tag" className="field h-9 py-0 pl-9" />
+        <div className="ml-auto flex w-full max-w-[500px] items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name, author or tag" className="field h-9 py-0 pl-9" />
+          </div>
+          <Select
+          value={sort}
+          onChange={setSort}
+          label="Sort"
+          icon={ArrowUpDown}
+          className="w-[180px] shrink-0"
+          options={[
+            { value: 'latest', label: 'Newest' },
+            { value: 'downloads', label: 'Most downloaded' },
+            { value: 'likes', label: 'Most liked' },
+            { value: 'rating', label: 'Highest rated' },
+          ]}
+          />
         </div>
-        <select value={sort} onChange={(event) => setSort(event.target.value)} className="field h-9 w-auto py-0 pr-8" aria-label="Sort">
-          <option value="latest">Newest</option>
-          <option value="downloads">Most downloaded</option>
-          <option value="likes">Most liked</option>
-          <option value="rating">Highest rated</option>
-        </select>
       </div>
 
       {error && <ErrorNote message={error} onRetry={reload} />}

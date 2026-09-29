@@ -66,7 +66,7 @@ export function TaskRow({ task, compact, onOpen }: { task: Task; compact?: boole
             </>
           )}
           {active ? (
-            <IconButton icon={X} label={task.jobId ? 'Stop tracking (the server keeps going)' : 'Cancel'} onClick={() => pc.cancelTask(task.id)} />
+            <IconButton icon={X} label={task.jobId ? 'Cancel job' : 'Cancel'} onClick={() => pc.cancelTask(task.id)} />
           ) : (
             <IconButton icon={X} label="Dismiss" className="opacity-0 group-hover:opacity-100" onClick={() => pc.dismissTask(task.id)} />
           )}

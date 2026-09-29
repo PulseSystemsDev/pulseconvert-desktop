@@ -1,6 +1,7 @@
 const http = require('http');
 const crypto = require('crypto');
 const yazl = require('yazl');
+const fs = require('fs');
 
 const PORT = Number(process.env.MOCK_PORT || 4599);
 const AUTO_APPROVE_AFTER_POLLS = Number(process.env.MOCK_APPROVE_AFTER ?? 2);
@@ -257,6 +258,7 @@ function sampleZip(name) {
 }
 
 function tinyGlb() {
+  if (process.env.MOCK_PREVIEW_GLB) return fs.readFileSync(process.env.MOCK_PREVIEW_GLB);
   const positions = [
     -1.6, -0.35, -0.8, 1.6, -0.35, -0.8, 1.6, 0.35, -0.8, -1.6, 0.35, -0.8, -1.6, -0.35, 0.8, 1.6, -0.35, 0.8, 1.6, 0.35, 0.8, -1.6, 0.35, 0.8,
     -0.8, 0.35, -0.7, 0.9, 0.35, -0.7, 0.6, 0.8, -0.6, -0.5, 0.8, -0.6, -0.8, 0.35, 0.7, 0.9, 0.35, 0.7, 0.6, 0.8, 0.6, -0.5, 0.8, 0.6,
@@ -389,6 +391,12 @@ const server = http.createServer(async (req, res) => {
     if (action === '/download') return send(res, 200, await sampleZip((job.title ?? 'resource').toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 40)), 'application/zip');
     if (action === '/preview') return send(res, 200, tinyGlb(), 'model/gltf-binary');
     if (action === '/rerun') return send(res, 200, { jobId: createJob(job.title, 'url') });
+    if (action === '/cancel' && method === 'POST') {
+      const wasRunning = job.status !== 'done' && job.status !== 'failed';
+      if (wasRunning) Object.assign(job, { status: 'failed', error: 'Cancelled.', completedAt: new Date().toISOString() });
+      console.log(`[mock] cancel ${job.id}: ${wasRunning ? 'cancelled' : 'already finished'}`);
+      return send(res, 200, { status: wasRunning ? 'cancelled' : 'finished' });
+    }
     return send(res, 200, { ok: true, id: 'shot1' });
   }
   if (path === '/api/upload/init') {

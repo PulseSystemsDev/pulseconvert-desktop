@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { Box, RotateCcw } from 'lucide-react';
+import { Box, RotateCcw, Shield } from 'lucide-react';
 import { pc } from '../lib/bridge';
+import { preparePreview } from './previewScene';
 import { Spinner } from './ui';
 
 export default function ModelViewer({ source }: { source: { kind: 'job' | 'vehicle'; id: string } }) {
@@ -11,6 +12,13 @@ export default function ModelViewer({ source }: { source: { kind: 'job' | 'vehic
   const resetRef = useRef<() => void>(() => {});
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
+  const collisionRef = useRef<THREE.Object3D[]>([]);
+  const [hasCollision, setHasCollision] = useState(false);
+  const [showCollision, setShowCollision] = useState(false);
+
+  useEffect(() => {
+    for (const node of collisionRef.current) node.visible = showCollision;
+  }, [showCollision, hasCollision]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -79,19 +87,10 @@ export default function ModelViewer({ source }: { source: { kind: 'job' | 'vehic
         (gltf) => {
           if (disposed) return;
           const model = gltf.scene;
-          model.traverse((node) => {
-            const mesh = node as THREE.Mesh;
-            if (!mesh.isMesh) return;
-            const name = mesh.name.toLowerCase();
-            if (name.includes('col') && name.includes('bound')) mesh.visible = false;
-            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-            for (const material of materials) {
-              material.side = THREE.FrontSide;
-              if (material.transparent && material.opacity > 0.95) material.transparent = false;
-            }
-          });
           scene.add(model);
-          const box = new THREE.Box3().setFromObject(model);
+          const { box, collision } = preparePreview(model);
+          collisionRef.current = collision;
+          setHasCollision(collision.length > 0);
           const size = box.getSize(new THREE.Vector3());
           const center = box.getCenter(new THREE.Vector3());
           model.position.sub(center);
@@ -148,12 +147,23 @@ export default function ModelViewer({ source }: { source: { kind: 'job' | 'vehic
         </div>
       )}
       {state === 'ready' && (
-        <button
-          onClick={() => resetRef.current()}
-          className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-md border border-border bg-bg-base/80 px-2 py-1 text-[11px] text-slate-300 hover:text-white"
-        >
-          <RotateCcw className="h-3 w-3" /> Reset view
-        </button>
+        <div className="absolute bottom-3 right-3 flex gap-1.5">
+          {hasCollision && (
+            <button
+              onClick={() => setShowCollision((value) => !value)}
+              aria-pressed={showCollision}
+              className={`flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] ${showCollision ? 'border-accent-orange/60 bg-accent-orange/15 text-accent-orange' : 'border-border bg-bg-base/80 text-slate-300 hover:text-white'}`}
+            >
+              <Shield className="h-3 w-3" /> Collision
+            </button>
+          )}
+          <button
+            onClick={() => resetRef.current()}
+            className="flex items-center gap-1.5 rounded-md border border-border bg-bg-base/80 px-2 py-1 text-[11px] text-slate-300 hover:text-white"
+          >
+            <RotateCcw className="h-3 w-3" /> Reset view
+          </button>
+        </div>
       )}
     </div>
   );

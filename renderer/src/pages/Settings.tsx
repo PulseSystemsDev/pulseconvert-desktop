@@ -6,7 +6,7 @@ import { useAccount } from '../lib/account';
 import { formatBytes, timeAgo } from '../lib/format';
 import { useSettings, useUpdateState } from '../lib/hooks';
 import { useToast } from '../lib/toast';
-import { Badge, Button, Card, PageHeader, ProgressBar, Segmented, SectionTitle, Skeleton, Toggle } from '../components/ui';
+import { Badge, Button, Card, PageHeader, ProgressBar, SectionTitle, Skeleton, Toggle } from '../components/ui';
 
 function AccountSection() {
   const { data, reload } = useAccount();
@@ -190,21 +190,7 @@ export function Settings() {
 
           <Card>
             <SectionTitle title="Conversions" />
-            <div className="flex items-center justify-between gap-6">
-              <div>
-                <p className="text-sm font-medium text-white">Default install type</p>
-                <p className="mt-0.5 text-[13px] text-slate-500">Used for quick converts and catalog conversions. You can still change it per conversion.</p>
-              </div>
-              <Segmented
-                value={settings.defaultTarget}
-                onChange={(value) => void save({ defaultTarget: value })}
-                options={[
-                  { value: 'addon', label: 'Add-on' },
-                  { value: 'replace', label: 'Replacement' },
-                ]}
-              />
-            </div>
-            <div className="mt-2 divide-y divide-border-subtle">
+            <div className="divide-y divide-border-subtle">
               <Toggle
                 label="Accept jobs from the website dashboard"
                 description="Lets you send a conversion or an optimize run to this computer from convert.pulsesystems.dev."
