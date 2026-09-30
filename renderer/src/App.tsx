@@ -121,7 +121,7 @@ function Workspace() {
       <TitleBar tasks={tasks} signedIn />
       <div className="flex min-h-0 flex-1">
         <Sidebar activeCount={tasks.filter(isActive).length} />
-        <main ref={scrollRef} className="min-w-0 flex-1 overflow-y-auto px-8 pb-12 pt-8">
+        <main ref={scrollRef} className="min-w-0 flex-1 overflow-y-auto px-7 pb-10 pt-6">
           <div key={`${route}-${params.dropped ?? ''}`} className="animate-fade-in">
             <ErrorBoundary>
               <Page route={route} tasks={tasks} />
@@ -132,10 +132,10 @@ function Workspace() {
       {settings && !settings.onboarded && <Welcome settings={settings} onDone={setSettings} />}
       {dragging && (
         <div className="pointer-events-none fixed inset-0 top-11 z-[70] flex animate-fade-in items-center justify-center bg-bg-base/80 backdrop-blur-sm">
-          <div className="rounded-2xl border-2 border-dashed border-accent-orange bg-accent-orange/[0.06] px-16 py-12 text-center">
+          <div className="rounded-md border-2 border-dashed border-accent-orange bg-accent-orange/[0.06] px-16 py-12 text-center">
             <UploadCloud className="mx-auto h-8 w-8 text-accent-orange" />
             <p className="mt-3 text-lg font-bold text-white">Drop to convert</p>
-            <p className="mt-1 text-sm text-slate-400">Archives, folders, or a .txt of links</p>
+            <p className="mt-1 text-sm text-zinc-400">Archives, folders, or a .txt of links</p>
           </div>
         </div>
       )}
@@ -149,7 +149,7 @@ export function App() {
   if (!status) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-slate-500" />
+        <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
       </div>
     );
   }

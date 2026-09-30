@@ -65,6 +65,7 @@ const bridge: PulseConvertDesktopAPI = {
 
   showInFolder: (filePath) => ipcRenderer.send('shell:show-in-folder', filePath),
   openOutputFolder: () => ipcRenderer.send('shell:open-output'),
+  openWebTool: (pagePath, title) => ipcRenderer.invoke('web-tool:open', pagePath, title),
   openExternal: (url) => ipcRenderer.send('shell:open-external', url),
 
   getSettings: () => ipcRenderer.invoke('settings:get'),

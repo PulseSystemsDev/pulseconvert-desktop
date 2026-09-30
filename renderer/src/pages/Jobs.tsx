@@ -159,20 +159,20 @@ function JobDrawer({ jobId, listItem, tasks, onClose, onChanged }: { jobId: stri
                     : job.progress.label ?? 'Processing'}
               </p>
               <ProgressBar className="mt-3" percent={job.progress.current != null && job.progress.total ? (job.progress.current / job.progress.total) * 100 : null} />
-              {job.etaMs ? <p className="mt-2 text-xs text-slate-500">About {formatDuration(job.etaMs)} left</p> : null}
+              {job.etaMs ? <p className="mt-2 text-xs text-zinc-500">About {formatDuration(job.etaMs)} left</p> : null}
               {trackingTask && <p className="mt-2 text-xs text-accent-teal">This app will download it automatically when it is done.</p>}
             </Card>
           )}
 
           {job.status === 'failed' && (
-            <div className="flex gap-3 rounded-lg border border-status-danger-border bg-status-danger-bg p-4">
+            <div className="flex gap-3 rounded-[5px] border border-status-danger-border bg-status-danger-bg p-4">
               <AlertTriangle className="h-4 w-4 shrink-0 text-status-danger" />
               <p className="selectable text-[13px] leading-relaxed text-status-danger">{job.error ?? 'The server could not finish this job.'}</p>
             </div>
           )}
 
           {job.realBrand && (
-            <p className="rounded-lg border border-status-warning-border bg-status-warning-bg px-3 py-2.5 text-[13px] text-status-warning">
+            <p className="rounded-[5px] border border-status-warning-border bg-status-warning-bg px-3 py-2.5 text-[13px] text-status-warning">
               This looks like a real-world brand ({job.realBrand}). Check that you have the rights to use it on your server.
             </p>
           )}
@@ -183,7 +183,7 @@ function JobDrawer({ jobId, listItem, tasks, onClose, onChanged }: { jobId: stri
                 <ModelViewer source={{ kind: 'job', id: jobId }} />
               </Suspense>
             ) : (
-              <button onClick={() => setShow3d(true)} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-8 text-sm text-slate-400 transition-colors hover:border-accent-orange/50 hover:text-white">
+              <button onClick={() => setShow3d(true)} className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-border py-8 text-sm text-zinc-400 transition-colors hover:border-accent-orange/50 hover:text-white">
                 <Box className="h-4 w-4" /> Show 3D preview
               </button>
             ))}
@@ -194,7 +194,7 @@ function JobDrawer({ jobId, listItem, tasks, onClose, onChanged }: { jobId: stri
               {job.batch.failedItems.length > 0 && (
                 <ul className="space-y-1.5">
                   {job.batch.failedItems.map((item) => (
-                    <li key={item.title} className="rounded-lg border border-status-danger-border bg-status-danger-bg px-3 py-2 text-xs">
+                    <li key={item.title} className="rounded-[5px] border border-status-danger-border bg-status-danger-bg px-3 py-2 text-xs">
                       <span className="font-semibold text-white">{item.title}</span>
                       <span className="block text-status-danger">{item.error}</span>
                     </li>
@@ -207,10 +207,10 @@ function JobDrawer({ jobId, listItem, tasks, onClose, onChanged }: { jobId: stri
           {fixLog.length > 0 && (
             <div>
               <SectionTitle title="What we fixed" description={`${fixLog.length} ${fixLog.length === 1 ? 'change' : 'changes'} applied automatically.`} />
-              <ol className="selectable max-h-[300px] space-y-1 overflow-y-auto rounded-lg border border-border-subtle bg-bg-base/60 p-3 font-mono text-[11.5px] leading-relaxed text-slate-400">
+              <ol className="selectable max-h-[300px] space-y-1 overflow-y-auto rounded-[5px] border border-border-subtle bg-bg-base/60 p-3 font-mono text-[11.5px] leading-relaxed text-zinc-400">
                 {fixLog.map((line, index) => (
                   <li key={index} className="flex gap-2">
-                    <Wrench className="mt-1 h-3 w-3 shrink-0 text-accent-orange" />
+                    <Wrench className="mt-1 h-3 w-3 shrink-0 text-zinc-600" />
                     <span>{line}</span>
                   </li>
                 ))}
@@ -242,8 +242,8 @@ function JobDrawer({ jobId, listItem, tasks, onClose, onChanged }: { jobId: stri
           )}
 
           {job.licenseText && (
-            <details className="rounded-lg border border-border-subtle bg-bg-base/60 p-3 text-xs text-slate-400">
-              <summary className="cursor-pointer font-semibold text-slate-300">Original license</summary>
+            <details className="rounded-[5px] border border-border-subtle bg-bg-base/60 p-3 text-xs text-zinc-400">
+              <summary className="cursor-pointer font-semibold text-zinc-300">Original license</summary>
               <p className="selectable mt-2 whitespace-pre-line leading-relaxed">{job.licenseText}</p>
             </details>
           )}
@@ -294,10 +294,10 @@ export function Jobs({ tasks }: { tasks: Task[] }) {
         }
       />
 
-      <Card className="mb-5">
+      <section className="mb-6">
         <SectionTitle
           title="On this device"
-          description="Uploads, server progress and downloads. Closing the app is safe once a job has reached the server - it picks back up next launch."
+          description="You can close the app once a job reaches the server. It picks back up next time."
           action={
             tasks.some((task) => !isActive(task)) && (
               <Button size="sm" variant="ghost" onClick={() => pc.clearFinishedTasks()}>
@@ -307,19 +307,19 @@ export function Jobs({ tasks }: { tasks: Task[] }) {
           }
         />
         {deviceTasks.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border-subtle py-6 text-center text-[13px] text-slate-500">Nothing in the last 24 hours.</p>
+          <p className="rounded-[5px] border border-dashed border-border-subtle py-6 text-center text-[13px] text-zinc-500">Nothing in the last 24 hours.</p>
         ) : (
-          <div className="grid gap-2 lg:grid-cols-2">
+          <div className="grid gap-1.5 lg:grid-cols-2">
             {deviceTasks.map((task) => (
               <TaskRow key={task.id} task={task} onOpen={task.jobId ? () => setOpenJob(task.jobId) : undefined} />
             ))}
           </div>
         )}
-      </Card>
+      </section>
 
       <Card padded={false}>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-5 py-4">
-          <h2 className="text-[15px] font-semibold text-white">All conversions</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-4 py-2.5">
+          <h2 className="text-[13px] font-semibold text-zinc-100">All conversions</h2>
           <Segmented
             value={filter}
             onChange={setFilter}
@@ -354,12 +354,12 @@ export function Jobs({ tasks }: { tasks: Task[] }) {
               <col className="w-[110px]" />
             </colgroup>
             <thead>
-              <tr className="text-[11px] uppercase tracking-wider text-slate-500">
-                <th className="px-5 py-2.5 font-semibold">Name</th>
-                <th className="px-3 py-2.5 font-semibold">Type</th>
-                <th className="px-3 py-2.5 font-semibold">Status</th>
-                <th className="px-3 py-2.5 text-right font-semibold">Size</th>
-                <th className="px-5 py-2.5 text-right font-semibold">Started</th>
+              <tr className="text-[12px] font-normal text-zinc-500">
+                <th className="px-4 py-2 font-normal">Name</th>
+                <th className="px-3 py-2 font-normal">Type</th>
+                <th className="px-3 py-2 font-normal">Status</th>
+                <th className="px-3 py-2 text-right font-normal">Size</th>
+                <th className="px-4 py-2 text-right font-normal">Started</th>
               </tr>
             </thead>
             <tbody>
@@ -368,22 +368,22 @@ export function Jobs({ tasks }: { tasks: Task[] }) {
                 const expired = job.status === 'done' && !job.hasOutput;
                 return (
                   <tr key={job.id} onClick={() => setOpenJob(job.id)} className="cursor-pointer border-t border-border-subtle transition-colors hover:bg-white/[0.02]">
-                    <td className="px-5 py-3">
+                    <td className="px-4 py-2">
                       <div className="flex items-center gap-3">
-                        <Icon className="h-4 w-4 shrink-0 text-slate-500" />
-                        <span className="truncate font-medium text-white" title={job.title ?? undefined}>
+                        <Icon className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
+                        <span className="truncate text-zinc-100" title={job.title ?? undefined}>
                           {job.title ?? 'Untitled job'}
                         </span>
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-3 py-3 text-slate-400">{SOURCE_LABEL[job.sourceType]}</td>
-                    <td className="whitespace-nowrap px-3 py-3">
+                    <td className="whitespace-nowrap px-3 py-2 text-zinc-400">{SOURCE_LABEL[job.sourceType]}</td>
+                    <td className="whitespace-nowrap px-3 py-2">
                       <Badge tone={expired ? 'neutral' : jobTone(job.status)}>{expired ? 'Expired' : JOB_STATUS_LABEL[job.status]}</Badge>
                     </td>
-                    <td className={cx('whitespace-nowrap px-3 py-3 text-right font-mono text-xs', job.outputSizeBytes ? 'text-slate-300' : 'text-slate-600')}>
+                    <td className={cx('whitespace-nowrap px-3 py-2 text-right font-mono text-xs', job.outputSizeBytes ? 'text-zinc-300' : 'text-zinc-600')}>
                       {job.outputSizeBytes ? formatBytes(job.outputSizeBytes) : '-'}
                     </td>
-                    <td className="whitespace-nowrap px-5 py-3 text-right text-xs text-slate-500">{timeAgo(job.createdAt)}</td>
+                    <td className="whitespace-nowrap px-4 py-2 text-right text-xs text-zinc-500">{timeAgo(job.createdAt)}</td>
                   </tr>
                 );
               })}
