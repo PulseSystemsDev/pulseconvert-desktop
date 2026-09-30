@@ -38,6 +38,7 @@ import {
 } from './operations';
 import { credentialStorageKind } from './secureStore';
 import { taskManager } from './taskManager';
+import { openWebTool } from './webTools';
 import { checkForUpdates, getUpdateState, installUpdate, onUpdateState, setupUpdater } from './updater';
 import type {
   ApiResult,
@@ -138,12 +139,12 @@ function createWindow(): void {
     minHeight: 680,
     title: 'Pulse Convert',
     icon: process.platform === 'linux' ? iconPath() : undefined,
-    backgroundColor: '#080b12',
+    backgroundColor: '#111112',
     show: false,
     titleBarStyle: 'hidden',
     ...(process.platform === 'darwin'
       ? { trafficLightPosition: { x: 16, y: 14 } }
-      : { titleBarOverlay: { color: '#080b12', symbolColor: '#c7d0dd', height: 44 } }),
+      : { titleBarOverlay: { color: '#0d0d0e', symbolColor: '#b4b4ba', height: 40 } }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -526,6 +527,15 @@ ipcMain.on('shell:show-in-folder', (_event, value: unknown) => {
   if (typeof value === 'string' && isKnownOutput(value) && fs.existsSync(value)) shell.showItemInFolder(value);
 });
 ipcMain.on('shell:open-output', () => void shell.openPath(outputFolder()));
+ipcMain.handle('web-tool:open', async (_event, pagePath: unknown, title: unknown): Promise<ApiResult<null>> => {
+  if (typeof pagePath !== 'string' || !/^\/(tools|workspaces|admin\/tools)(\/|\?|$)/.test(pagePath)) return { ok: false, error: 'That page cannot be opened here.', status: 400 };
+  try {
+    await openWebTool(pagePath, typeof title === 'string' ? title.slice(0, 80) : 'Tool');
+    return { ok: true, data: null };
+  } catch (err) {
+    return { ok: false, error: err instanceof ApiError ? err.message : 'Could not open the tool.', status: err instanceof ApiError ? err.status : 0 };
+  }
+});
 ipcMain.on('shell:open-external', (_event, value: unknown) => openExternal(value));
 
 function currentSettings(): DesktopSettings {

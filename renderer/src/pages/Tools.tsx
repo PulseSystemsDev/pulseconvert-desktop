@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle2, FileSearch, FolderOpen, Search, Siren } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ExternalLink, FileSearch, FolderOpen, LayoutGrid, Search, ShieldCheck, Siren } from 'lucide-react';
 import { pc, type SelectedInput, type Task } from '../lib/bridge';
 import { formatBytes } from '../lib/format';
 import { useRouter } from '../lib/router';
 import { useToast } from '../lib/toast';
-import { Badge, Button, Card, Field, PageHeader, ProgressBar, Segmented, SectionTitle } from '../components/ui';
+import { Badge, Button, Card, EmptyState, ErrorNote, Field, PageHeader, ProgressBar, Segmented, SectionTitle, Skeleton, Spinner } from '../components/ui';
+import { useApi } from '../lib/hooks';
 import { Dropzone } from '../components/Dropzone';
 import { SelectedFile } from './Optimize';
 
-type Tool = 'collisions' | 'map' | 'sirens';
+type Tool = 'site' | 'collisions' | 'map' | 'sirens';
 
 interface CollisionResult {
   name: string;
@@ -254,22 +255,107 @@ function Sirens({ tasks }: { tasks: Task[] }) {
   );
 }
 
+interface SiteTool {
+  slug: string;
+  name: string;
+  href: string;
+  category: string;
+  summary: string;
+  restricted: boolean;
+  adminOnly: boolean;
+  untested: boolean;
+  isNew: boolean;
+}
+
+function SiteTools() {
+  const toast = useToast();
+  const { data, error, loading, reload } = useApi<{ admin: boolean; tools: SiteTool[] }>('/api/tools/available');
+  const [query, setQuery] = useState('');
+  const [opening, setOpening] = useState<string | null>(null);
+
+  const open = async (href: string, name: string) => {
+    setOpening(href);
+    const result = await pc.openWebTool(href, name);
+    setOpening(null);
+    if (!result.ok) toast.error('Could not open', result.error);
+  };
+
+  if (loading && !data) return <Skeleton className="h-64" />;
+  if (error) return <ErrorNote message={error} onRetry={reload} />;
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const tools = (data?.tools ?? []).filter((t) => words.every((w) => `${t.name} ${t.summary} ${t.category}`.toLowerCase().includes(w)));
+  const groups = [...new Set(tools.map((t) => t.category))];
+
+  return (
+    <div>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="relative w-full max-w-[320px]">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter tools" className="field h-8 pl-8" />
+        </div>
+        <p className="flex-1 text-[12px] text-zinc-500">
+          {data?.admin ? 'You are an admin, so you see every tool.' : 'Tools your account can use. An admin can give you access to more.'} They open in their own window, signed in as you. Downloads go to your output folder.
+        </p>
+        {data?.admin && (
+          <Button size="sm" icon={ShieldCheck} loading={opening === '/admin/tools'} onClick={() => void open('/admin/tools', 'Tool access')}>
+            Manage tool access
+          </Button>
+        )}
+      </div>
+      {tools.length === 0 ? (
+        <EmptyState icon={Search} title="No tools match" description="Try a different word." />
+      ) : (
+        <div className="space-y-5">
+          {groups.map((group) => (
+            <section key={group}>
+              <h2 className="mb-1.5 text-[12px] text-zinc-500">{group}</h2>
+              <ul className="card divide-y divide-border-subtle">
+                {tools
+                  .filter((t) => t.category === group)
+                  .map((t) => (
+                    <li key={t.slug}>
+                      <button onClick={() => void open(t.href, t.name)} className="flex w-full items-center gap-4 px-4 py-2.5 text-left hover:bg-white/[0.03]">
+                        <span className="w-56 shrink-0">
+                          <span className="block text-[13px] text-zinc-100">{t.name}</span>
+                          <span className="mt-0.5 flex gap-3">
+                            {t.untested && <Badge tone="warning">Beta</Badge>}
+                            {t.adminOnly && <Badge tone="danger">Admin only</Badge>}
+                            {t.restricted && !t.adminOnly && !data?.admin && <Badge tone="success">Granted</Badge>}
+                            {t.isNew && !t.untested && <Badge tone="info">New</Badge>}
+                          </span>
+                        </span>
+                        <span className="min-w-0 flex-1 text-[12px] leading-relaxed text-zinc-400">{t.summary}</span>
+                        {opening === t.href ? <Spinner /> : <ExternalLink className="h-3.5 w-3.5 shrink-0 text-zinc-600" />}
+                      </button>
+                    </li>
+                  ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Tools({ tasks }: { tasks: Task[] }) {
   const { params } = useRouter();
-  const [tool, setTool] = useState<Tool>((params.tool as Tool) || 'collisions');
+  const [tool, setTool] = useState<Tool>((params.tool as Tool) || 'site');
   return (
     <div className="mx-auto max-w-[1180px]">
-      <PageHeader title="Tools" description="Server-side checks and builders for problems conversion alone doesn't solve." />
+      <PageHeader title="Tools" description="Checks and builders for problems conversion alone doesn't solve." />
       <Segmented
         className="mb-5"
         value={tool}
         onChange={setTool}
         options={[
+          { value: 'site', label: 'All tools', icon: LayoutGrid },
           { value: 'collisions', label: 'Collision checker', icon: Search },
           { value: 'map', label: 'Map & MLO inspector', icon: FileSearch },
           { value: 'sirens', label: 'Siren builder', icon: Siren },
         ]}
       />
+      {tool === 'site' && <SiteTools />}
       {tool === 'collisions' && <Collisions />}
       {tool === 'map' && <MapInspector tasks={tasks} />}
       {tool === 'sirens' && <Sirens tasks={tasks} />}

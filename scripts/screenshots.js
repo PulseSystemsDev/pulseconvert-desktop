@@ -119,10 +119,21 @@ async function main() {
   await shot('16-stats');
 
   await nav('Tools');
+  await win.waitForSelector('text=ELS Converter');
+  await shot('17-tools');
+  const toolWindow = app.waitForEvent('window');
+  await win.click('button:has-text("ELS Converter")');
+  const tw = await toolWindow;
+  await tw.waitForLoadState();
+  await sleep(800);
+  await tw.screenshot({ path: path.join(OUT, '17c-tool-window.png') });
+  console.log('saved 17c-tool-window');
+  await tw.close();
+  await win.click('button[role=tab]:has-text("Collision checker")');
   await win.fill('textarea', 'police\nmy_gt3rs\nm4comp_pc\nr34_vspec');
   await win.click('button:has-text("Check for collisions")');
   await sleep(1000);
-  await shot('17-tools');
+  await shot('17b-collisions');
   await nav('Deploy');
   await win.click('text=Remote server (SFTP)');
   await shot('18-deploy');
