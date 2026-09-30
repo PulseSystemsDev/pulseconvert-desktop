@@ -3,6 +3,9 @@ import path from 'path';
 import yazl from 'yazl';
 import { absoluteApiUrl, ApiError, desktopFetch, desktopFetchJson, getValidAccessToken, isOwnApiUrl, postJson } from './apiClient';
 
+// Cloudflare refuses request bodies over 100 MB, whatever chunk size the server asks for.
+const MAX_CHUNK_BYTES = 99_000_000;
+
 interface UploadInitResponse {
   uploadId: string;
   chunkSize: number;
@@ -57,7 +60,7 @@ export async function uploadLocalFile(
     let index = 0;
     while (sent < stat.size) {
       throwIfAborted(signal);
-      const chunkLength = Math.min(init.chunkSize, stat.size - sent);
+      const chunkLength = Math.min(init.chunkSize, MAX_CHUNK_BYTES, stat.size - sent);
       const buffer = Buffer.alloc(chunkLength);
       fs.readSync(fd, buffer, 0, chunkLength, sent);
 
