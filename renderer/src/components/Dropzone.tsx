@@ -49,17 +49,14 @@ export function Dropzone({
         if (files.length) handle(await pc.approveDroppedFiles(files));
       }}
       className={cx(
-        'group relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed text-center transition-colors',
-        compact ? 'px-5 py-6' : 'px-6 py-10',
-        over ? 'border-accent-orange bg-accent-orange/[0.06]' : 'border-border hover:border-border-strong',
+        'group relative flex flex-col items-center justify-center rounded-[5px] border border-dashed text-center transition-colors',
+        compact ? 'px-4 py-4' : 'px-5 py-8',
+        over ? 'border-accent-orange bg-accent-orange/[0.05]' : 'border-border-strong hover:border-zinc-500',
       )}
     >
-      <div className={cx('mb-3 flex h-11 w-11 items-center justify-center rounded-xl border transition-colors', over ? 'border-accent-orange/40 bg-accent-orange-dim text-accent-orange' : 'border-border bg-bg-elevated text-slate-400')}>
-        <UploadCloud className="h-5 w-5" />
-      </div>
-      <p className="text-sm font-semibold text-white">{over ? 'Drop to add' : title}</p>
-      {hint && <p className="mt-1 max-w-[46ch] text-xs leading-relaxed text-slate-500">{hint}</p>}
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+      <p className="text-[13px] font-medium text-zinc-200">{over ? 'Drop to add' : title}</p>
+      {hint && <p className="mt-0.5 max-w-[56ch] text-[12px] leading-relaxed text-zinc-500">{hint}</p>}
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
         {modes.includes('archives') && (
           <Button size="sm" icon={UploadCloud} onClick={async () => handle(await pc.pickInputs('archives', multiple))}>
             Choose {multiple ? 'files' : 'a file'}

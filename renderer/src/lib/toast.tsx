@@ -47,7 +47,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {items.map((item) => {
           const Icon = item.tone === 'success' ? CheckCircle2 : item.tone === 'error' ? TriangleAlert : Info;
           return (
-            <div key={item.id} className="pointer-events-auto flex animate-rise items-start gap-3 rounded-xl border border-border bg-bg-elevated px-4 py-3 shadow-panel">
+            <div key={item.id} className="pointer-events-auto flex animate-rise items-start gap-3 rounded-md border border-border bg-bg-elevated px-4 py-3 shadow-panel">
               <Icon
                 className={cx(
                   'mt-0.5 h-4 w-4 shrink-0',
@@ -58,7 +58,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-white">{item.title}</p>
-                {item.body && <p className="mt-0.5 break-words text-xs text-slate-400">{item.body}</p>}
+                {item.body && <p className="mt-0.5 break-words text-xs text-zinc-400">{item.body}</p>}
                 {item.action && (
                   <button
                     className="mt-1.5 text-xs font-semibold text-accent-orange hover:underline"
@@ -71,7 +71,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   </button>
                 )}
               </div>
-              <button className="text-slate-500 hover:text-white" onClick={() => dismiss(item.id)} aria-label="Dismiss">
+              <button className="text-zinc-500 hover:text-white" onClick={() => dismiss(item.id)} aria-label="Dismiss">
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>

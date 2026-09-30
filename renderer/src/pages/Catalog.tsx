@@ -24,7 +24,7 @@ import { compactNumber, cx } from '../lib/format';
 import { useApi, useDebounced } from '../lib/hooks';
 import { useRouter } from '../lib/router';
 import { useToast } from '../lib/toast';
-import { Badge, Button, Drawer, EmptyState, ErrorNote, IconButton, PageHeader, Segmented, Select, Skeleton, Spinner } from '../components/ui';
+import { Badge, Button, Drawer, EmptyState, ErrorNote, IconButton, PageHeader, Segmented, Select, Skeleton, Spinner, StatTile } from '../components/ui';
 
 const ModelViewer = lazy(() => import('../components/ModelViewer'));
 
@@ -92,7 +92,7 @@ function Thumb({ src, className }: { src: string | null; className?: string }) {
   if (!url || failed) {
     return (
       <div className={cx('flex items-center justify-center bg-bg-elevated', className)}>
-        <ImageOff className="h-6 w-6 text-slate-600" />
+        <ImageOff className="h-6 w-6 text-zinc-600" />
       </div>
     );
   }
@@ -149,17 +149,17 @@ function EntryCard({ entry, kind, onOpen, onFavorite }: { entry: Entry; kind: Ki
             onFavorite();
           }}
           aria-label={entry.favorited ? 'Remove from favorites' : 'Add to favorites'}
-          className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-lg bg-bg-base/70 backdrop-blur transition-colors hover:bg-bg-base"
+          className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-[5px] bg-bg-base/70 backdrop-blur transition-colors hover:bg-bg-base"
         >
-          <Heart className={cx('h-3.5 w-3.5', entry.favorited ? 'fill-accent-orange text-accent-orange' : 'text-slate-300')} />
+          <Heart className={cx('h-3.5 w-3.5', entry.favorited ? 'fill-accent-orange text-accent-orange' : 'text-zinc-300')} />
         </button>
       </div>
       <div className="flex flex-1 flex-col p-3.5 pt-2">
         <p className="line-clamp-2 text-[13px] font-semibold leading-snug text-white" title={entry.title}>
           {entry.title}
         </p>
-        <p className="mt-1 truncate text-xs text-slate-500">{entry.author ? `by ${entry.author}` : 'Unknown author'}</p>
-        <div className="mt-auto flex items-center gap-3 pt-3 font-mono text-[11px] text-slate-500">
+        <p className="mt-1 truncate text-xs text-zinc-500">{entry.author ? `by ${entry.author}` : 'Unknown author'}</p>
+        <div className="mt-auto flex items-center gap-3 pt-3 font-mono text-[11px] text-zinc-500">
           {entry.downloads !== undefined && (
             <span className="flex items-center gap-1">
               <Download className="h-3 w-3" /> {compactNumber(entry.downloads)}
@@ -199,7 +199,7 @@ function EntryDrawer({ entry, kind, onClose, onFavorite }: { entry: Entry | null
       footer={
         <>
           {canInstant ? (
-            <Button variant="teal" icon={Zap} loading={working === entry.id} onClick={() => void instant(entry)}>
+            <Button variant="primary" icon={Zap} loading={working === entry.id} onClick={() => void instant(entry)}>
               Instant download
             </Button>
           ) : (
@@ -224,7 +224,7 @@ function EntryDrawer({ entry, kind, onClose, onFavorite }: { entry: Entry | null
           <ModelViewer source={{ kind: 'vehicle', id: entry.id }} />
         </Suspense>
       ) : (
-        <div className="relative overflow-hidden rounded-xl border border-border-subtle">
+        <div className="relative overflow-hidden rounded-md border border-border-subtle">
           <Thumb src={entry.thumbnailUrl} className="aspect-video w-full" />
           {kind === 'vehicles' && entry.hasPreview && (
             <Button size="sm" icon={Box} className="absolute bottom-3 right-3" onClick={() => setShow3d(true)}>
@@ -234,31 +234,16 @@ function EntryDrawer({ entry, kind, onClose, onFavorite }: { entry: Entry | null
         </div>
       )}
 
-      <div className="mt-5 grid grid-cols-3 gap-3">
-        <div className="rounded-lg border border-border-subtle bg-bg-base/60 p-3">
-          <p className="eyebrow">Downloads</p>
-          <p className="mt-1 font-mono text-lg font-bold text-white">{compactNumber(entry.downloads)}</p>
-        </div>
-        <div className="rounded-lg border border-border-subtle bg-bg-base/60 p-3">
-          <p className="eyebrow">Likes</p>
-          <p className="mt-1 font-mono text-lg font-bold text-white">{compactNumber(entry.likes)}</p>
-        </div>
-        <div className="rounded-lg border border-border-subtle bg-bg-base/60 p-3">
-          <p className="eyebrow">Rating</p>
-          <p className="mt-1 font-mono text-lg font-bold text-white">{entry.rating ? entry.rating.toFixed(1) : '-'}</p>
-        </div>
+      <div className="mt-4 grid grid-cols-3">
+        <StatTile label="Downloads" value={compactNumber(entry.downloads)} />
+        <StatTile label="Likes" value={compactNumber(entry.likes)} />
+        <StatTile label="Rating" value={entry.rating ? entry.rating.toFixed(1) : '-'} />
       </div>
 
       {canInstant ? (
-        <p className="mt-4 flex items-center gap-2 rounded-lg border border-accent-teal/30 bg-accent-teal/[0.06] px-3 py-2.5 text-[13px] text-accent-teal">
-          <Zap className="h-4 w-4" /> Prebuilt and ready. No queue wait.
-        </p>
+        <p className="mt-4 text-[12px] text-zinc-400">A prebuilt copy is ready, so Instant download skips the queue.</p>
       ) : (
-        (kind === 'vehicles' || kind === 'animations') && (
-          <p className="mt-4 rounded-lg border border-border-subtle bg-bg-base/60 px-3 py-2.5 text-[13px] text-slate-400">
-            No prebuilt copy yet, so this goes through a normal conversion.
-          </p>
-        )
+        (kind === 'vehicles' || kind === 'animations') && <p className="mt-4 text-[12px] text-zinc-400">No prebuilt copy yet, so this goes through a normal conversion.</p>
       )}
 
       {tags.length > 0 && (
@@ -272,7 +257,7 @@ function EntryDrawer({ entry, kind, onClose, onFavorite }: { entry: Entry | null
       {entry.description && (
         <div className="mt-5">
           <p className="eyebrow mb-2">About</p>
-          <p className="selectable max-h-[340px] overflow-y-auto whitespace-pre-line text-[13px] leading-relaxed text-slate-400">{entry.description}</p>
+          <p className="selectable max-h-[340px] overflow-y-auto whitespace-pre-line text-[13px] leading-relaxed text-zinc-400">{entry.description}</p>
         </div>
       )}
     </Drawer>
@@ -319,7 +304,7 @@ export function Catalog() {
         <Segmented value={kind} onChange={(value) => setKind(value)} options={KINDS} />
         <div className="ml-auto flex w-full max-w-[500px] items-center gap-3">
           <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name, author or tag" className="field h-9 py-0 pl-9" />
           </div>
           <Select
@@ -352,7 +337,7 @@ export function Catalog() {
         </div>
       ) : (
         <>
-          <div className="mb-3 flex items-center justify-between text-xs text-slate-500">
+          <div className="mb-3 flex items-center justify-between text-xs text-zinc-500">
             <span>
               {data?.total.toLocaleString()} results {loading && <Spinner className="ml-1 inline h-3 w-3" />}
             </span>
@@ -367,7 +352,7 @@ export function Catalog() {
               <Button size="sm" icon={ChevronLeft} disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>
                 Previous
               </Button>
-              <span className="font-mono text-xs text-slate-400">
+              <span className="font-mono text-xs text-zinc-400">
                 {data.page} / {data.totalPages}
               </span>
               <Button size="sm" disabled={page >= data.totalPages} onClick={() => setPage((value) => value + 1)}>

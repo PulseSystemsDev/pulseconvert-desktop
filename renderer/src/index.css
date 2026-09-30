@@ -3,16 +3,37 @@
 @tailwind utilities;
 
 @font-face {
-  font-family: 'Geist';
-  src: url('./assets/Geist-Variable.woff2') format('woff2');
-  font-weight: 100 900;
+  font-family: 'IBM Plex Sans';
+  src: url('./assets/ibm-plex-sans-latin-400-normal.woff2') format('woff2');
+  font-weight: 400;
   font-display: block;
 }
 
 @font-face {
-  font-family: 'JetBrains Mono';
-  src: url('./assets/JetBrainsMono-Latin-Variable.woff2') format('woff2');
-  font-weight: 100 800;
+  font-family: 'IBM Plex Sans';
+  src: url('./assets/ibm-plex-sans-latin-500-normal.woff2') format('woff2');
+  font-weight: 500;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('./assets/ibm-plex-sans-latin-600-normal.woff2') format('woff2');
+  font-weight: 600 800;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('./assets/ibm-plex-mono-latin-400-normal.woff2') format('woff2');
+  font-weight: 400;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('./assets/ibm-plex-mono-latin-500-normal.woff2') format('woff2');
+  font-weight: 500 800;
   font-display: block;
 }
 
@@ -26,10 +47,10 @@
     height: 100%;
   }
   body {
-    background: #080b12;
-    color: #f5f8fc;
-    font-family: Geist, ui-sans-serif, system-ui, sans-serif;
-    font-size: 14px;
+    background: #111112;
+    color: #ececee;
+    font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+    font-size: 13px;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     overflow: hidden;
@@ -43,7 +64,7 @@
     user-select: text;
   }
   ::selection {
-    background: rgba(255, 122, 51, 0.28);
+    background: rgba(240, 123, 63, 0.28);
     color: white;
   }
   ::-webkit-scrollbar {
@@ -54,16 +75,16 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #253248;
+    background: #2c2c30;
     border-radius: 999px;
     border: 3px solid transparent;
     background-clip: padding-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background-color: #34445f;
+    background-color: #3b3b41;
   }
   :focus-visible {
-    outline: 2px solid rgba(255, 122, 51, 0.7);
+    outline: 2px solid rgba(240, 123, 63, 0.7);
     outline-offset: 2px;
   }
   input[type='number']::-webkit-outer-spin-button,
@@ -81,13 +102,13 @@
     -webkit-app-region: no-drag;
   }
   .field {
-    @apply w-full rounded-lg border border-border bg-bg-base px-3 py-2.5 text-sm text-white placeholder:text-slate-500 transition-colors focus:border-accent-orange/60 focus:outline-none focus:ring-2 focus:ring-accent-orange/15;
+    @apply w-full rounded-[5px] border border-border bg-bg-base px-2.5 py-[7px] text-[13px] text-white placeholder:text-zinc-500 transition-colors focus:border-accent-orange/70 focus:outline-none;
   }
   .card {
-    @apply rounded-xl border border-border-subtle bg-bg-surface;
+    @apply rounded-md border border-border-subtle bg-bg-surface;
   }
   .eyebrow {
-    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500;
+    @apply text-[12px] font-medium text-zinc-500;
   }
 }
 

@@ -23,10 +23,10 @@ interface Overview {
 
 function Row({ entry, index, icon: Icon }: { entry: Entry; index: number; icon: typeof Cog }) {
   return (
-    <li className={cx('flex items-center gap-3 rounded-lg border px-3 py-2.5', entry.isMine ? 'border-accent-orange/40 bg-accent-orange/[0.06]' : 'border-border-subtle bg-bg-base/60')}>
-      <span className="w-6 text-right font-mono text-xs text-slate-500">{index + 1}</span>
-      <Icon className={cx('h-4 w-4', entry.status === 'processing' ? 'animate-spin text-accent-orange [animation-duration:3s]' : 'text-slate-500')} />
-      <span className="min-w-0 flex-1 truncate text-[13px] text-slate-200">{entry.title ?? SOURCE_LABEL[entry.sourceType]}</span>
+    <li className={cx('flex items-center gap-3 rounded-[5px] border px-3 py-2.5', entry.isMine ? 'border-accent-orange/40 bg-accent-orange/[0.06]' : 'border-border-subtle bg-bg-base/60')}>
+      <span className="w-6 text-right font-mono text-xs text-zinc-500">{index + 1}</span>
+      <Icon className={cx('h-4 w-4', entry.status === 'processing' ? 'animate-spin text-accent-orange [animation-duration:3s]' : 'text-zinc-500')} />
+      <span className="min-w-0 flex-1 truncate text-[13px] text-zinc-200">{entry.title ?? SOURCE_LABEL[entry.sourceType]}</span>
       {entry.isMine && (
         <Badge tone="orange" icon={User}>
           Yours
@@ -41,7 +41,7 @@ function Column({ title, description, entries, icon, empty }: { title: string; d
     <Card>
       <SectionTitle title={title} description={description} action={<Badge>{entries.length}</Badge>} />
       {entries.length === 0 ? (
-        <p className="py-6 text-center text-[13px] text-slate-500">{empty}</p>
+        <p className="py-6 text-center text-[13px] text-zinc-500">{empty}</p>
       ) : (
         <ol className="space-y-1.5">
           {entries.map((entry, index) => (
@@ -73,7 +73,7 @@ export function Queue() {
       ) : data ? (
         <>
           {mine.length > 0 && (
-            <p className="mb-5 rounded-lg border border-accent-orange/30 bg-accent-orange/[0.06] px-4 py-3 text-[13px] text-slate-200">
+            <p className="mb-5 rounded-[5px] border border-accent-orange/30 bg-accent-orange/[0.06] px-4 py-3 text-[13px] text-zinc-200">
               You have <span className="font-semibold text-white">{mine.length}</span> {mine.length === 1 ? 'job' : 'jobs'} in the pipeline.
             </p>
           )}

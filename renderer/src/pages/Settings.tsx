@@ -6,7 +6,7 @@ import { useAccount } from '../lib/account';
 import { formatBytes, timeAgo } from '../lib/format';
 import { useSettings, useUpdateState } from '../lib/hooks';
 import { useToast } from '../lib/toast';
-import { Badge, Button, Card, PageHeader, ProgressBar, SectionTitle, Skeleton, Toggle } from '../components/ui';
+import { Badge, Button, Card, PageHeader, ProgressBar, SectionTitle, Skeleton, StatTile, Toggle } from '../components/ui';
 
 function AccountSection() {
   const { data, reload } = useAccount();
@@ -19,33 +19,30 @@ function AccountSection() {
     <Card>
       <div className="flex items-center gap-4">
         {data.avatar ? (
-          <img src={data.avatar} alt="" className="h-14 w-14 rounded-full" />
+          <img src={data.avatar} alt="" className="h-9 w-9 rounded-full" />
         ) : (
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-accent-orange-dim text-xl font-bold text-accent-orange">{(data.username ?? 'P').slice(0, 1).toUpperCase()}</div>
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-bg-hover text-[13px] font-semibold text-zinc-300">{(data.username ?? 'P').slice(0, 1).toUpperCase()}</div>
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-bold text-white">{data.username ?? 'Pulse account'}</p>
-          <p className="text-[13px] text-slate-500">{data.firstLogin ? `Member since ${new Date(data.firstLogin).toLocaleDateString()}` : 'Signed in with Pulse Accounts'}</p>
+          <p className="truncate text-[14px] font-semibold text-white">{data.username ?? 'Pulse account'}</p>
+          <p className="text-[12px] text-zinc-500">{data.firstLogin ? `Member since ${new Date(data.firstLogin).toLocaleDateString()}` : 'Signed in with Pulse Accounts'}</p>
         </div>
-        <Button variant="danger" icon={LogOut} onClick={() => window.confirm('Sign out of Pulse Convert on this computer?') && pc.signOut()}>
+        <Button size="sm" icon={LogOut} onClick={() => window.confirm('Sign out of Pulse Convert on this computer?') && pc.signOut()}>
           Sign out
         </Button>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="mt-4 grid grid-cols-2 gap-y-3 md:grid-cols-4">
         {[
           ['Jobs', data.stats.totalJobs.toLocaleString()],
           ['Finished', data.stats.doneJobs.toLocaleString()],
           ['Success rate', data.stats.totalJobs ? `${Math.round((data.stats.doneJobs / data.stats.totalJobs) * 100)}%` : '-'],
           ['Delivered', formatBytes(data.stats.totalOutputBytes)],
         ].map(([label, value]) => (
-          <div key={label} className="rounded-lg border border-border-subtle bg-bg-base/60 p-3">
-            <p className="eyebrow">{label}</p>
-            <p className="mt-1 truncate font-mono text-[15px] font-bold text-white">{value}</p>
-          </div>
+          <StatTile key={label} label={label} value={value} />
         ))}
       </div>
-      {!data.limits.conversionsEnabled && <p className="mt-4 rounded-lg border border-status-warning-border bg-status-warning-bg px-3 py-2 text-[13px] text-status-warning">Conversions are paused site-wide right now.</p>}
+      {!data.limits.conversionsEnabled && <p className="mt-4 rounded-[5px] border border-status-warning-border bg-status-warning-bg px-3 py-2 text-[13px] text-status-warning">Conversions are paused site-wide right now.</p>}
 
       <div className="mt-2 divide-y divide-border-subtle">
         <Toggle
@@ -66,15 +63,15 @@ function AccountSection() {
           {data.devices.map((device) => {
             const current = device.id === info?.deviceId;
             return (
-              <li key={device.id} className="flex items-center gap-3 rounded-lg border border-border-subtle bg-bg-base/60 px-3 py-2">
-                <Laptop className="h-4 w-4 text-slate-500" />
+              <li key={device.id} className="flex items-center gap-3 rounded-[5px] border border-border-subtle bg-bg-base/60 px-3 py-2">
+                <Laptop className="h-4 w-4 text-zinc-500" />
                 <span className="min-w-0 flex-1 truncate text-[13px] text-white">
-                  {device.name} <span className="text-slate-500">· {device.platform ?? 'unknown'}</span>
+                  {device.name} <span className="text-zinc-500">· {device.platform ?? 'unknown'}</span>
                 </span>
-                {current ? <Badge tone="teal">This computer</Badge> : <span className="text-[11px] text-slate-500">seen {timeAgo(device.lastSeenAt)}</span>}
+                {current ? <Badge tone="teal">This computer</Badge> : <span className="text-[11px] text-zinc-500">seen {timeAgo(device.lastSeenAt)}</span>}
                 {!current && (
                   <button
-                    className="text-slate-500 hover:text-status-danger"
+                    className="text-zinc-500 hover:text-status-danger"
                     aria-label="Unlink device"
                     onClick={async () => {
                       if (!window.confirm(`Unlink ${device.name}? It will stop receiving jobs from the dashboard.`)) return;
@@ -127,7 +124,7 @@ function UpdatesSection({ info }: { info: AppInfo | null }) {
             Check now
           </Button>
         )}
-        <span className="ml-auto font-mono text-xs text-slate-500">
+        <span className="ml-auto font-mono text-xs text-zinc-500">
           v{info?.version} · {info?.platform} {info?.arch}
         </span>
       </div>
@@ -209,13 +206,13 @@ export function Settings() {
 
       <Card>
         <div className="flex items-center gap-4">
-          <img src={mark} alt="" className="h-12 w-12" />
+          <img src={mark} alt="" className="h-8 w-8" />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-white">Pulse Convert Desktop</p>
-            <p className="text-[13px] text-slate-500">
+            <p className="text-[13px] font-semibold text-white">Pulse Convert Desktop</p>
+            <p className="text-[12px] text-zinc-500">
               by Pulse Systems · connected to <span className="font-mono">{info?.apiBaseUrl.replace(/^https?:\/\//, '')}</span>
             </p>
-            <p className="mt-0.5 text-xs text-slate-600">Credentials stored in {info?.credentialStorage === 'os-keychain' ? 'your system keychain' : 'a user-only file (no system keychain found)'}</p>
+            <p className="mt-0.5 text-xs text-zinc-600">Credentials stored in {info?.credentialStorage === 'os-keychain' ? 'your system keychain' : 'a user-only file (no system keychain found)'}</p>
           </div>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">

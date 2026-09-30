@@ -7,7 +7,7 @@ import { KIND_ICON, PHASE_LABEL, isActive, phaseIcon, phaseTone } from './taskMe
 const COMPACT_TONE: Record<string, string> = {
   success: 'text-status-success',
   danger: 'text-status-danger',
-  neutral: 'text-slate-400',
+  neutral: 'text-zinc-400',
   info: 'text-status-info',
   orange: 'text-accent-orange',
   teal: 'text-accent-teal',
@@ -22,16 +22,14 @@ export function TaskRow({ task, compact, onOpen }: { task: Task; compact?: boole
 
   return (
     <div
-      className={cx('group rounded-xl border border-border-subtle bg-bg-base/60 transition-colors hover:border-border', compact ? 'p-3' : 'p-4', onOpen && 'cursor-pointer')}
+      className={cx('group rounded-[5px] border border-border-subtle bg-bg-surface transition-colors hover:border-border', compact ? 'px-2.5 py-2' : 'px-3 py-2.5', onOpen && 'cursor-pointer')}
       onClick={() => onOpen?.(task)}
     >
       <div className="flex items-start gap-3">
-        <div className={cx('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border', active ? 'border-accent-orange/30 bg-accent-orange-dim text-accent-orange' : 'border-border bg-bg-elevated text-slate-400')}>
-          <KindIcon className="h-4 w-4" />
-        </div>
+        <KindIcon className={cx('mt-0.5 h-4 w-4 shrink-0', active ? 'text-zinc-300' : 'text-zinc-500')} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className="min-w-0 flex-1 truncate text-sm font-semibold text-white" title={task.title}>
+            <p className="min-w-0 flex-1 truncate text-[13px] font-medium text-zinc-100" title={task.title}>
               {task.title}
             </p>
             {!compact && (
@@ -40,15 +38,15 @@ export function TaskRow({ task, compact, onOpen }: { task: Task; compact?: boole
               </Badge>
             )}
           </div>
-          <p className={cx('mt-0.5 truncate text-xs', task.phase === 'failed' ? 'text-status-danger' : 'text-slate-500')} title={task.label}>
-            {compact && <span className={cx('mr-1.5 font-semibold', COMPACT_TONE[tone])}>{PHASE_LABEL[task.phase]} ·</span>}
+          <p className={cx('mt-0.5 truncate text-[12px]', task.phase === 'failed' ? 'text-status-danger' : 'text-zinc-500')} title={task.label}>
+            {compact && <span className={cx('mr-1.5', COMPACT_TONE[tone])}>{PHASE_LABEL[task.phase]} ·</span>}
             {task.subtitle && !active && task.phase !== 'failed' ? `${task.subtitle} · ` : ''}
             {task.label}
             {task.etaMs && task.phase === 'queued' ? ` · about ${formatDuration(task.etaMs)}` : ''}
           </p>
-          {active && <ProgressBar percent={task.percent} className="mt-2.5" />}
+          {active && <ProgressBar percent={task.percent} className="mt-2" />}
           {!active && !compact && (
-            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-zinc-500">
               {task.outputSizeBytes ? <span className="font-mono">{formatBytes(task.outputSizeBytes)}</span> : null}
               {task.fixLog.length > 0 && <span>{task.fixLog.length} fixes applied</span>}
               {task.deploy?.deployed && <span className="text-accent-teal">Deployed to {task.deploy.destination}</span>}

@@ -5,9 +5,9 @@ import { cx } from '../lib/format';
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'teal';
 
 const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'bg-accent-orange text-bg-base hover:bg-[#ff8b4d] shadow-glow disabled:shadow-none',
-  secondary: 'border border-border bg-bg-elevated text-slate-200 hover:border-border-strong hover:bg-bg-hover hover:text-white',
-  ghost: 'text-slate-400 hover:bg-white/[0.05] hover:text-white',
+  primary: 'bg-accent-orange text-[#1a0f08] hover:bg-[#f48a52]',
+  secondary: 'border border-border bg-bg-elevated text-zinc-200 hover:border-border-strong hover:bg-bg-hover hover:text-white',
+  ghost: 'text-zinc-400 hover:bg-white/[0.06] hover:text-white',
   danger: 'border border-status-danger-border bg-status-danger-bg text-status-danger hover:bg-status-danger/20',
   teal: 'bg-accent-teal text-bg-base hover:bg-accent-teal/90',
 };
@@ -27,15 +27,15 @@ export function Button({
       {...props}
       disabled={props.disabled || loading}
       className={cx(
-        'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg font-semibold transition-[background-color,border-color,color,transform,box-shadow] duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45',
-        size === 'sm' && 'h-8 px-3 text-xs',
-        size === 'md' && 'h-10 px-4 text-sm',
-        size === 'lg' && 'h-12 px-6 text-[15px]',
+        'inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[5px] font-medium transition-colors duration-100 disabled:cursor-not-allowed disabled:opacity-45',
+        size === 'sm' && 'h-7 px-2.5 text-[12px]',
+        size === 'md' && 'h-8 px-3 text-[13px]',
+        size === 'lg' && 'h-9 px-4 text-[13px]',
         BUTTON_VARIANTS[variant],
         className,
       )}
     >
-      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : Icon ? <Icon className={size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4'} /> : null}
+      {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : Icon ? <Icon className="h-3.5 w-3.5" /> : null}
       {children}
     </button>
   );
@@ -49,7 +49,7 @@ export function IconButton({ icon: Icon, label, className, active, ...props }: B
       title={label}
       {...props}
       className={cx(
-        'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-40',
+        'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[5px] text-zinc-400 transition-colors hover:bg-white/[0.07] hover:text-white disabled:opacity-40',
         active && 'text-accent-orange',
         className,
       )}
@@ -61,35 +61,47 @@ export function IconButton({ icon: Icon, label, className, active, ...props }: B
 
 type Tone = 'neutral' | 'orange' | 'teal' | 'success' | 'danger' | 'warning' | 'info';
 
-const TONES: Record<Tone, string> = {
-  neutral: 'border-border bg-white/[0.03] text-slate-400',
-  orange: 'border-accent-orange/30 bg-accent-orange-dim text-accent-orange',
-  teal: 'border-accent-teal/30 bg-accent-teal/10 text-accent-teal',
-  success: 'border-status-success-border bg-status-success-bg text-status-success',
-  danger: 'border-status-danger-border bg-status-danger-bg text-status-danger',
-  warning: 'border-status-warning-border bg-status-warning-bg text-status-warning',
-  info: 'border-status-info-border bg-status-info-bg text-status-info',
+const DOTS: Record<Tone, string> = {
+  neutral: 'bg-zinc-500',
+  orange: 'bg-accent-orange',
+  teal: 'bg-accent-teal',
+  success: 'bg-status-success',
+  danger: 'bg-status-danger',
+  warning: 'bg-status-warning',
+  info: 'bg-status-info',
 };
 
+const TEXT: Record<Tone, string> = {
+  neutral: 'text-zinc-400',
+  orange: 'text-zinc-200',
+  teal: 'text-zinc-200',
+  success: 'text-zinc-300',
+  danger: 'text-status-danger',
+  warning: 'text-zinc-200',
+  info: 'text-zinc-200',
+};
+
+/** A status: a coloured dot and plain text, the way a desktop tool shows state. */
 export function Badge({ tone = 'neutral', icon: Icon, children, className }: { tone?: Tone; icon?: LucideIcon; children: ReactNode; className?: string }) {
+  const spinning = Icon === Loader2;
   return (
-    <span className={cx('inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-1.5 py-0.5 text-[11px] font-semibold', TONES[tone], className)}>
-      {Icon && <Icon className="h-3 w-3" />}
+    <span className={cx('inline-flex items-center gap-1.5 whitespace-nowrap text-[12px]', TEXT[tone], className)}>
+      {spinning ? <Loader2 className="h-3 w-3 animate-spin text-zinc-500" /> : <span className={cx('h-1.5 w-1.5 shrink-0 rounded-full', DOTS[tone])} />}
       {children}
     </span>
   );
 }
 
 export function Card({ children, className, padded = true }: { children: ReactNode; className?: string; padded?: boolean }) {
-  return <section className={cx('card', padded && 'p-5', className)}>{children}</section>;
+  return <section className={cx('card', padded && 'p-4', className)}>{children}</section>;
 }
 
 export function SectionTitle({ title, description, action }: { title: string; description?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="mb-4 flex items-start justify-between gap-4">
+    <div className="mb-3 flex items-start justify-between gap-4">
       <div className="min-w-0">
-        <h2 className="text-[15px] font-semibold text-white">{title}</h2>
-        {description && <p className="mt-0.5 text-[13px] leading-relaxed text-slate-500">{description}</p>}
+        <h2 className="text-[13px] font-semibold text-zinc-100">{title}</h2>
+        {description && <p className="mt-0.5 text-[12px] leading-relaxed text-zinc-500">{description}</p>}
       </div>
       {action}
     </div>
@@ -98,11 +110,11 @@ export function SectionTitle({ title, description, action }: { title: string; de
 
 export function PageHeader({ title, description, actions, eyebrow }: { title: string; description?: ReactNode; actions?: ReactNode; eyebrow?: string }) {
   return (
-    <header className="mb-7 flex items-end justify-between gap-6">
+    <header className="mb-5 flex items-end justify-between gap-6 border-b border-border-subtle pb-4">
       <div className="min-w-0">
-        {eyebrow && <p className="eyebrow mb-2">{eyebrow}</p>}
-        <h1 className="text-[28px] font-bold leading-tight tracking-[-0.015em] text-white">{title}</h1>
-        {description && <p className="mt-1.5 max-w-[68ch] text-sm leading-relaxed text-slate-400">{description}</p>}
+        {eyebrow && <p className="eyebrow mb-1">{eyebrow}</p>}
+        <h1 className="text-[18px] font-semibold leading-tight text-white">{title}</h1>
+        {description && <p className="mt-1 max-w-[80ch] text-[12px] leading-relaxed text-zinc-500">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </header>
@@ -112,7 +124,7 @@ export function PageHeader({ title, description, actions, eyebrow }: { title: st
 export function ProgressBar({ percent, tone = 'orange', className }: { percent: number | null; tone?: 'orange' | 'teal' | 'danger' | 'success'; className?: string }) {
   const color = { orange: 'bg-accent-orange', teal: 'bg-accent-teal', danger: 'bg-status-danger', success: 'bg-status-success' }[tone];
   return (
-    <div className={cx('relative h-1.5 overflow-hidden rounded-full bg-white/[0.06]', className)}>
+    <div className={cx('relative h-1 overflow-hidden rounded-full bg-white/[0.07]', className)}>
       {percent == null ? (
         <div className={cx('absolute inset-y-0 w-1/3 animate-[indeterminate_1.4s_ease-in-out_infinite] rounded-full', color)} />
       ) : (
@@ -123,18 +135,16 @@ export function ProgressBar({ percent, tone = 'orange', className }: { percent: 
 }
 
 export function Spinner({ className }: { className?: string }) {
-  return <Loader2 className={cx('h-4 w-4 animate-spin text-slate-500', className)} />;
+  return <Loader2 className={cx('h-4 w-4 animate-spin text-zinc-500', className)} />;
 }
 
 export function EmptyState({ icon: Icon, title, description, action }: { icon: LucideIcon; title: string; description?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
-      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-bg-elevated">
-        <Icon className="h-5 w-5 text-slate-400" />
-      </div>
-      <p className="text-sm font-semibold text-white">{title}</p>
-      {description && <p className="mt-1 max-w-[44ch] text-[13px] leading-relaxed text-slate-500">{description}</p>}
-      {action && <div className="mt-5">{action}</div>}
+    <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
+      <Icon className="mb-3 h-5 w-5 text-zinc-600" />
+      <p className="text-[13px] font-medium text-zinc-200">{title}</p>
+      {description && <p className="mt-1 max-w-[48ch] text-[12px] leading-relaxed text-zinc-500">{description}</p>}
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }
@@ -151,7 +161,7 @@ export function Segmented<T extends string>({
   className?: string;
 }) {
   return (
-    <div className={cx('inline-flex rounded-lg border border-border-subtle bg-bg-base p-0.5', className)} role="tablist">
+    <div className={cx('inline-flex gap-0.5 rounded-[5px] border border-border-subtle bg-bg-base p-0.5', className)} role="tablist">
       {options.map((option) => {
         const Icon = option.icon;
         const active = option.value === value;
@@ -163,13 +173,13 @@ export function Segmented<T extends string>({
             aria-selected={active}
             onClick={() => onChange(option.value)}
             className={cx(
-              'inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[13px] font-medium transition-colors',
-              active ? 'bg-bg-elevated text-white shadow-[inset_0_0_0_1px_#253248]' : 'text-slate-400 hover:text-white',
+              'inline-flex h-7 items-center gap-1.5 rounded-[4px] px-2.5 text-[12px] font-medium transition-colors',
+              active ? 'bg-bg-hover text-white' : 'text-zinc-400 hover:text-white',
             )}
           >
-            {Icon && <Icon className={cx('h-3.5 w-3.5', active && 'text-accent-orange')} />}
+            {Icon && <Icon className="h-3.5 w-3.5" />}
             {option.label}
-            {option.count !== undefined && <span className="font-mono text-[11px] text-slate-500">{option.count}</span>}
+            {option.count !== undefined && <span className="font-mono text-[11px] text-zinc-500">{option.count}</span>}
           </button>
         );
       })}
@@ -235,16 +245,16 @@ export function Select<T extends string>({
         aria-label={label}
         onClick={() => setOpen((value) => !value)}
         className={cx(
-          'inline-flex h-9 w-full items-center gap-2 rounded-lg border bg-bg-base px-3 text-[13px] font-medium text-slate-200 transition-colors',
+          'inline-flex h-8 w-full items-center gap-2 rounded-[5px] border bg-bg-base px-2.5 text-[13px] text-zinc-200 transition-colors',
           open ? 'border-accent-orange/60' : 'border-border-subtle hover:border-border-strong',
         )}
       >
-        {Icon && <Icon className="h-3.5 w-3.5 text-slate-500" />}
+        {Icon && <Icon className="h-3.5 w-3.5 text-zinc-500" />}
         <span className="flex-1 truncate text-left">{current?.label}</span>
-        <ChevronDown className={cx('h-3.5 w-3.5 text-slate-500 transition-transform', open && 'rotate-180')} />
+        <ChevronDown className={cx('h-3.5 w-3.5 text-zinc-500 transition-transform', open && 'rotate-180')} />
       </button>
       {open && (
-        <ul role="listbox" aria-label={label} className="absolute right-0 z-30 mt-1.5 min-w-full overflow-hidden rounded-lg border border-border bg-bg-elevated p-1 shadow-xl shadow-black/40">
+        <ul role="listbox" aria-label={label} className="absolute right-0 z-30 mt-1.5 min-w-full overflow-hidden rounded-[5px] border border-border bg-bg-elevated p-1 shadow-xl shadow-black/40">
           {options.map((option, index) => {
             const selected = option.value === value;
             return (
@@ -256,8 +266,8 @@ export function Select<T extends string>({
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => pick(option.value)}
                 className={cx(
-                  'flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-md px-2.5 py-2 text-[13px]',
-                  index === active ? 'bg-bg-hover text-white' : 'text-slate-300',
+                  'flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-[4px] px-2 py-1.5 text-[13px]',
+                  index === active ? 'bg-bg-hover text-white' : 'text-zinc-300',
                 )}
               >
                 <span className="flex-1">{option.label}</span>
@@ -273,10 +283,10 @@ export function Select<T extends string>({
 
 export function Toggle({ checked, onChange, label, description, disabled }: { checked: boolean; onChange: (value: boolean) => void; label: string; description?: ReactNode; disabled?: boolean }) {
   return (
-    <label className={cx('flex cursor-pointer items-start justify-between gap-6 py-3', disabled && 'cursor-not-allowed opacity-50')}>
+    <label className={cx('flex cursor-pointer items-start justify-between gap-6 py-2.5', disabled && 'cursor-not-allowed opacity-50')}>
       <span className="min-w-0">
-        <span className="block text-sm font-medium text-white">{label}</span>
-        {description && <span className="mt-0.5 block text-[13px] leading-relaxed text-slate-500">{description}</span>}
+        <span className="block text-[13px] text-zinc-100">{label}</span>
+        {description && <span className="mt-0.5 block text-[12px] leading-relaxed text-zinc-500">{description}</span>}
       </span>
       <button
         type="button"
@@ -284,9 +294,9 @@ export function Toggle({ checked, onChange, label, description, disabled }: { ch
         aria-checked={checked}
         disabled={disabled}
         onClick={() => onChange(!checked)}
-        className={cx('relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors', checked ? 'bg-accent-orange' : 'bg-border-strong')}
+        className={cx('relative mt-0.5 h-4 w-7 shrink-0 rounded-full transition-colors', checked ? 'bg-accent-orange' : 'bg-border-strong')}
       >
-        <span className={cx('absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-[left]', checked ? 'left-[18px]' : 'left-0.5')} />
+        <span className={cx('absolute top-0.5 h-3 w-3 rounded-full bg-white transition-[left]', checked ? 'left-[14px]' : 'left-0.5')} />
       </button>
     </label>
   );
@@ -295,9 +305,9 @@ export function Toggle({ checked, onChange, label, description, disabled }: { ch
 export function Field({ label, hint, children, className }: { label: string; hint?: ReactNode; children: ReactNode; className?: string }) {
   return (
     <label className={cx('block', className)}>
-      <span className="mb-1.5 block text-[13px] font-medium text-slate-300">{label}</span>
+      <span className="mb-1 block text-[12px] text-zinc-400">{label}</span>
       {children}
-      {hint && <span className="mt-1.5 block text-xs leading-relaxed text-slate-500">{hint}</span>}
+      {hint && <span className="mt-1 block text-[12px] leading-relaxed text-zinc-500">{hint}</span>}
     </label>
   );
 }
@@ -312,17 +322,17 @@ export function Drawer({ open, onClose, title, subtitle, children, footer, width
   if (!open) return null;
   return (
     <div className="fixed inset-0 top-11 z-50 flex justify-end">
-      <div className="absolute inset-0 animate-fade-in bg-black/50 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="absolute inset-0 animate-fade-in bg-black/50" onClick={onClose} />
       <aside className="relative flex h-full animate-slide-in flex-col border-l border-border bg-bg-surface shadow-panel" style={{ width: `min(${width}px, 92vw)` }}>
-        <header className="flex items-start justify-between gap-4 border-b border-border-subtle px-6 py-5">
+        <header className="flex items-start justify-between gap-4 border-b border-border-subtle px-5 py-3.5">
           <div className="min-w-0">
-            <h2 className="truncate text-lg font-bold text-white">{title}</h2>
-            {subtitle && <div className="mt-1 text-[13px] text-slate-500">{subtitle}</div>}
+            <h2 className="truncate text-[15px] font-semibold text-white">{title}</h2>
+            {subtitle && <div className="mt-0.5 text-[12px] text-zinc-500">{subtitle}</div>}
           </div>
           <IconButton icon={X} label="Close" onClick={onClose} />
         </header>
-        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
-        {footer && <footer className="flex flex-wrap items-center gap-2 border-t border-border-subtle px-6 py-4">{footer}</footer>}
+        <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        {footer && <footer className="flex flex-wrap items-center gap-2 border-t border-border-subtle px-5 py-3">{footer}</footer>}
       </aside>
     </div>
   );
@@ -330,20 +340,20 @@ export function Drawer({ open, onClose, title, subtitle, children, footer, width
 
 export function StatTile({ label, value, sub, icon: Icon, accent }: { label: string; value: ReactNode; sub?: ReactNode; icon?: LucideIcon; accent?: boolean }) {
   return (
-    <div className="card p-4">
-      <div className="flex items-center justify-between">
-        <p className="eyebrow">{label}</p>
-        {Icon && <Icon className={cx('h-4 w-4', accent ? 'text-accent-orange' : 'text-slate-600')} />}
-      </div>
-      <p className={cx('mt-2 font-mono text-2xl font-bold tracking-tight', accent ? 'text-accent-orange' : 'text-white')}>{value}</p>
-      {sub && <p className="mt-1 text-xs text-slate-500">{sub}</p>}
+    <div className="min-w-0 border-l border-border-subtle pl-3">
+      <p className="flex items-center gap-1.5 text-[12px] text-zinc-500">
+        {Icon && <Icon className="h-3.5 w-3.5 text-zinc-600" />}
+        {label}
+      </p>
+      <p className={cx('mt-0.5 font-mono text-[18px] font-medium tabular-nums', accent ? 'text-accent-orange' : 'text-zinc-100')}>{value}</p>
+      {sub && <p className="text-[12px] text-zinc-500">{sub}</p>}
     </div>
   );
 }
 
 export function Skeleton({ className }: { className?: string }) {
   return (
-    <div className={cx('relative overflow-hidden rounded-lg bg-white/[0.04]', className)}>
+    <div className={cx('relative overflow-hidden rounded-[5px] bg-white/[0.04]', className)}>
       <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/[0.04] to-transparent" />
     </div>
   );
@@ -351,7 +361,7 @@ export function Skeleton({ className }: { className?: string }) {
 
 export function ErrorNote({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger">
+    <div className="flex items-center justify-between gap-4 rounded-[5px] border border-status-danger-border bg-status-danger-bg px-3 py-2 text-[13px] text-status-danger">
       <span className="min-w-0 break-words">{message}</span>
       {onRetry && (
         <Button size="sm" variant="ghost" onClick={onRetry}>
@@ -363,5 +373,5 @@ export function ErrorNote({ message, onRetry }: { message: string; onRetry?: () 
 }
 
 export function Kbd({ children }: { children: ReactNode }) {
-  return <kbd className="rounded border border-border bg-bg-base px-1.5 py-0.5 font-mono text-[10px] text-slate-400">{children}</kbd>;
+  return <kbd className="rounded border border-border bg-bg-base px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">{children}</kbd>;
 }

@@ -65,7 +65,7 @@ export function Deploy() {
     <div className="mx-auto max-w-[900px]">
       <PageHeader
         title="Deploy"
-        description="Decide what happens to a finished resource. Everything here stays on this computer - server passwords are never sent to Pulse Convert."
+        description="What happens after a job finishes. These settings and passwords stay on this computer."
         actions={
           <Button variant="primary" icon={Save} disabled={!dirty} loading={saving} onClick={() => void save()}>
             Save
@@ -73,20 +73,17 @@ export function Deploy() {
         }
       />
 
-      <div className="grid gap-3 md:grid-cols-3">
-        {MODES.map(({ value, title, desc, icon: Icon }) => {
+      <div className="card divide-y divide-border-subtle" role="radiogroup" aria-label="After a job finishes">
+        {MODES.map(({ value, title, desc }) => {
           const active = draft.deployMode === value;
           return (
-            <button key={value} onClick={() => update({ deployMode: value })} className={cx('card relative flex flex-col items-start p-4 text-left transition-colors', active ? 'border-accent-orange/50 bg-accent-orange/[0.05]' : 'hover:border-border')}>
-              {active && (
-                <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-accent-orange">
-                  <Check className="h-3 w-3 text-bg-base" />
-                </span>
-              )}
-              <Icon className={cx('h-5 w-5', active ? 'text-accent-orange' : 'text-slate-500')} />
-              <p className="mt-3 text-sm font-semibold text-white">{title}</p>
-              <p className="mt-1 text-xs leading-relaxed text-slate-500">{desc}</p>
-            </button>
+            <label key={value} className="flex cursor-pointer items-start gap-3 px-4 py-3 hover:bg-white/[0.02]">
+              <input type="radio" name="deployMode" checked={active} onChange={() => update({ deployMode: value })} className="mt-0.5 accent-[#f07b3f]" />
+              <span>
+                <span className="block text-[13px] text-zinc-100">{title}</span>
+                <span className="block text-[12px] text-zinc-500">{desc}</span>
+              </span>
+            </label>
           );
         })}
       </div>
@@ -107,7 +104,7 @@ export function Deploy() {
               Browse
             </Button>
           </div>
-          <p className="mt-3 text-xs text-slate-500">This folder is also what the dashboard's "optimize my server" command works on.</p>
+          <p className="mt-3 text-xs text-zinc-500">This folder is also what the dashboard's "optimize my server" command works on.</p>
         </Card>
       )}
 
@@ -163,7 +160,7 @@ export function Deploy() {
             </Button>
           </div>
           {testResult && (
-            <p className={cx('mt-4 flex items-start gap-2 rounded-lg border px-3 py-2.5 text-[13px]', testResult.ok ? 'border-status-success-border bg-status-success-bg text-status-success' : 'border-status-danger-border bg-status-danger-bg text-status-danger')}>
+            <p className={cx('mt-4 flex items-start gap-2 rounded-[5px] border px-3 py-2.5 text-[13px]', testResult.ok ? 'border-status-success-border bg-status-success-bg text-status-success' : 'border-status-danger-border bg-status-danger-bg text-status-danger')}>
               {testResult.ok ? <Check className="mt-0.5 h-4 w-4 shrink-0" /> : <XCircle className="mt-0.5 h-4 w-4 shrink-0" />}
               <span className="selectable break-all">{testResult.text}</span>
             </p>
@@ -171,19 +168,11 @@ export function Deploy() {
         </Card>
       )}
 
-      <Card className="mt-5 bg-bg-base/40">
-        <ul className="space-y-2 text-[13px] text-slate-400">
-          <li className="flex gap-2">
-            <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent-teal" /> The finished ZIP always stays in your output folder, even when a deploy fails.
-          </li>
-          <li className="flex gap-2">
-            <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent-teal" /> Passwords are encrypted with your system keychain (on Linux without one, they're kept in a file only your user can read).
-          </li>
-          <li className="flex gap-2">
-            <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent-teal" /> You can deploy any earlier result again from Jobs.
-          </li>
-        </ul>
-      </Card>
+      <ul className="mt-5 list-disc space-y-1 pl-4 text-[12px] text-zinc-500 marker:text-zinc-600">
+        <li>The finished ZIP always stays in your output folder, even when a deploy fails.</li>
+        <li>Passwords are encrypted with your system keychain (on Linux without one, they&apos;re kept in a file only your user can read).</li>
+        <li>You can deploy any earlier result again from Jobs.</li>
+      </ul>
 
     </div>
   );

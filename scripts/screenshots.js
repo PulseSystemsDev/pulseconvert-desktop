@@ -56,10 +56,10 @@ async function main() {
   await win.click('button:has-text("Next")');
   await shot('04-welcome-deploy');
   await win.click('text=Skip for now');
-  await win.waitForSelector('text=Quick convert');
+  await win.waitForSelector('text=Recent jobs');
 
-  await win.fill('input[placeholder^="https://www.gta5-mods.com/vehicles"]', 'https://www.gta5-mods.com/vehicles/2024-porsche-911-gt3-rs');
-  await win.click('main form button[type=submit]');
+  await win.fill('input[placeholder^="Paste a gta5-mods"]', 'https://www.gta5-mods.com/vehicles/2024-porsche-911-gt3-rs');
+  await win.click('main form button[type=submit]:has-text("Convert")');
   await sleep(1200);
   await app.evaluate(({ dialog }, file) => {
     dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] });
