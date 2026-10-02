@@ -3,9 +3,9 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        bg: { base: '#080b12', surface: '#0f1520', elevated: '#172131', hover: '#1c2840' },
-        border: { subtle: '#1b2638', DEFAULT: '#253248', strong: '#34445f' },
-        accent: { orange: '#ff7a33', teal: '#2dd4bf', 'orange-dim': 'rgba(255,122,51,0.14)' },
+        bg: { base: '#0a0b0f', surface: '#111319', elevated: '#171a22', hover: '#1c1f27' },
+        border: { subtle: '#1b1e27', DEFAULT: '#262a35', strong: '#343947' },
+        accent: { orange: '#ff7a33', 'orange-soft': '#ffa06a', 'orange-deep': '#e25d17', teal: '#2dd4bf', 'orange-dim': 'rgba(255,122,51,0.14)' },
         status: {
           success: { DEFAULT: '#5fae6e', bg: 'rgba(95,174,110,0.12)', border: 'rgba(95,174,110,0.3)' },
           danger: { DEFAULT: '#d9685b', bg: 'rgba(217,104,91,0.12)', border: 'rgba(217,104,91,0.3)' },
@@ -17,6 +17,14 @@ module.exports = {
         sans: ['Geist', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         display: ['Geist', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+      },
+      // Softly rounded everywhere, same scale as the website: controls 8-10px, panels 12-14px.
+      borderRadius: {
+        DEFAULT: '8px',
+        md: '10px',
+        lg: '12px',
+        xl: '14px',
+        '2xl': '18px',
       },
       boxShadow: {
         glow: '0 0 20px rgba(255,122,51,0.15)',

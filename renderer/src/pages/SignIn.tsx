@@ -29,7 +29,6 @@ function Showcase() {
 
   return (
     <div className="pointer-events-none absolute inset-0">
-      <div className="absolute -left-40 -top-40 h-[520px] w-[520px] rounded-full bg-accent-orange/10 blur-[120px]" />
       {images.length >= 6 && (
         <div className="absolute -left-10 -right-10 -top-16 flex h-[72%] rotate-[-6deg] gap-3">
           {columns.map((column, index) => (
@@ -89,10 +88,11 @@ export function SignIn({ status }: { status: AuthStatus }) {
         <Showcase />
         <div className="relative mt-auto p-12 pt-0">
           <img src={mark} alt="" className="h-11 w-11" />
-          <h1 className="mt-6 text-[34px] font-bold leading-[1.1] tracking-[-0.02em] text-white">
-            GTA V mods to
+          <h1 className="mt-6 text-[34px] font-semibold leading-[1.1] tracking-[-0.03em]">
+            <span className="text-fill">GTA V mods to</span>
             <br />
-            FiveM-ready resources.
+            <span className="text-accent-orange">FiveM-ready</span>
+            <span className="text-fill"> resources.</span>
           </h1>
           <p className="mt-3 max-w-[42ch] text-[15px] leading-relaxed text-slate-400">Everything Pulse Convert does on the web, in an app that keeps working while you do other things.</p>
           <ul className="mt-8 grid grid-cols-2 gap-x-6 gap-y-4">
@@ -109,7 +109,7 @@ export function SignIn({ status }: { status: AuthStatus }) {
       <div className="flex flex-1 items-center justify-center p-10">
         <div className="w-full max-w-[420px]">
           <img src={mark} alt="" className="mb-6 h-10 w-10 lg:hidden" />
-          <h2 className="text-2xl font-bold tracking-tight text-white">{awaiting ? 'Approve this device' : 'Sign in to Pulse Convert'}</h2>
+          <h2 className="text-fill text-2xl font-semibold tracking-[-0.03em]">{awaiting ? 'Approve this device' : 'Sign in to Pulse Convert'}</h2>
           <p className="mt-2 text-sm leading-relaxed text-slate-400">
             {awaiting
               ? 'We opened Pulse Accounts in your browser. Check that the code there matches this one, then approve.'

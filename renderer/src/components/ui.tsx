@@ -5,8 +5,8 @@ import { cx } from '../lib/format';
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'teal';
 
 const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'bg-accent-orange text-bg-base hover:bg-[#ff8b4d] shadow-glow disabled:shadow-none',
-  secondary: 'border border-border bg-bg-elevated text-slate-200 hover:border-border-strong hover:bg-bg-hover hover:text-white',
+  primary: 'btn-accent',
+  secondary: 'btn-quiet',
   ghost: 'text-slate-400 hover:bg-white/[0.05] hover:text-white',
   danger: 'border border-status-danger-border bg-status-danger-bg text-status-danger hover:bg-status-danger/20',
   teal: 'bg-accent-teal text-bg-base hover:bg-accent-teal/90',
@@ -27,7 +27,7 @@ export function Button({
       {...props}
       disabled={props.disabled || loading}
       className={cx(
-        'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg font-semibold transition-[background-color,border-color,color,transform,box-shadow] duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45',
+        'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[10px] font-semibold transition-[background-color,border-color,color,transform,box-shadow] duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45',
         size === 'sm' && 'h-8 px-3 text-xs',
         size === 'md' && 'h-10 px-4 text-sm',
         size === 'lg' && 'h-12 px-6 text-[15px]',
@@ -101,7 +101,7 @@ export function PageHeader({ title, description, actions, eyebrow }: { title: st
     <header className="mb-7 flex items-end justify-between gap-6">
       <div className="min-w-0">
         {eyebrow && <p className="eyebrow mb-2">{eyebrow}</p>}
-        <h1 className="text-[28px] font-bold leading-tight tracking-[-0.015em] text-white">{title}</h1>
+        <h1 className="text-fill text-[28px] font-semibold leading-tight tracking-[-0.03em]">{title}</h1>
         {description && <p className="mt-1.5 max-w-[68ch] text-sm leading-relaxed text-slate-400">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
@@ -164,7 +164,7 @@ export function Segmented<T extends string>({
             onClick={() => onChange(option.value)}
             className={cx(
               'inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[13px] font-medium transition-colors',
-              active ? 'bg-bg-elevated text-white shadow-[inset_0_0_0_1px_#253248]' : 'text-slate-400 hover:text-white',
+              active ? 'bg-bg-elevated text-white shadow-[inset_0_0_0_1px_#262a35]' : 'text-slate-400 hover:text-white',
             )}
           >
             {Icon && <Icon className={cx('h-3.5 w-3.5', active && 'text-accent-orange')} />}

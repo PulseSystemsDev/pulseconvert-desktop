@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
-// Validated with the dataviz palette checker against the card surface (#0f1520): both inside the
+// Validated with the dataviz palette checker against the card surface (#111319): both inside the
 // lightness band, CVD separation 10.9, normal-vision 26.1. Keep these two as a pair.
 export const CHART_COLORS = { done: '#11a090', failed: '#e0654f', line: '#ff7a33' };
-const SURFACE = '#0f1520';
-const GRID = '#1b2638';
+const SURFACE = '#111319';
+const GRID = '#1b1e27';
 
 function useWidth<T extends HTMLElement>(): [React.RefObject<T | null>, number] {
   const ref = useRef<T>(null);
@@ -183,7 +183,7 @@ export function Sparkline({ points, height = 120, unit }: { points: SamplePoint[
               <path d={line} fill="none" stroke={CHART_COLORS.line} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
             </>
           )}
-          {hover !== null && <line x1={x(hover)} x2={x(hover)} y1={padY} y2={height - padY} stroke="#34445f" strokeWidth={1} />}
+          {hover !== null && <line x1={x(hover)} x2={x(hover)} y1={padY} y2={height - padY} stroke="#343947" strokeWidth={1} />}
           {last && (
             <circle cx={x(hover ?? points.length - 1)} cy={y(points[hover ?? points.length - 1].value)} r={4} fill={CHART_COLORS.line} stroke={SURFACE} strokeWidth={2} />
           )}
