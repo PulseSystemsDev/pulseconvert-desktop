@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRight, CheckCircle2, Clock3, Gauge, Hammer, LayoutGrid, Link2, RefreshCw, Server, Sparkles, UploadCloud, Zap } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Clock3, Gauge, Hammer, LayoutGrid, Link2, RefreshCw, Server, UploadCloud, Zap } from 'lucide-react';
 import { pc, type JobListItem, type Task } from '../lib/bridge';
 import { useAccount } from '../lib/account';
 import { cx, formatBytes, formatDuration, formatNumber, isSupportedSourceUrl, timeAgo } from '../lib/format';
@@ -48,13 +48,16 @@ function QuickConvert() {
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border bg-bg-surface p-7">
-      <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-accent-orange/[0.09] blur-[80px]" />
-      <div className="relative">
-        <Badge tone="orange" icon={Sparkles}>
-          Quick convert
-        </Badge>
-        <h2 className="mt-3 text-xl font-bold tracking-tight text-white">Paste a mod link and walk away.</h2>
+    <div className="rounded-2xl border border-border-subtle bg-bg-surface p-7">
+      <div>
+        <p className="kicker">
+          <span className="kicker-dot" aria-hidden="true" /> Quick convert
+        </p>
+        <h2 className="mt-3 text-xl font-semibold tracking-[-0.02em]">
+          <span className="text-fill">Paste a mod link and </span>
+          <span className="text-accent-orange">walk away</span>
+          <span className="text-fill">.</span>
+        </h2>
         <p className="mt-1 text-sm text-slate-400">gta5-mods.com, MediaFire and ShareMods links. The finished resource lands in your output folder.</p>
         <form
           className="mt-5 flex gap-2"
@@ -208,7 +211,7 @@ export function Home({ tasks }: { tasks: Task[] }) {
     <div className="mx-auto max-w-[1180px]">
       <header className="mb-7">
         <p className="eyebrow mb-2">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-        <h1 className="text-[28px] font-bold tracking-[-0.015em] text-white">
+        <h1 className="text-fill text-[28px] font-semibold tracking-[-0.03em]">
           {greeting()}
           {account?.username ? `, ${account.username}` : ''}.
         </h1>
