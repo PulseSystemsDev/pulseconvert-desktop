@@ -41,11 +41,11 @@ function HistoryCharts({ samples }: { samples: SamplePoint[] }) {
         />
         {data ? <DailyBars days={days} /> : <Skeleton className="h-[220px]" />}
         {data && (
-          <details className="mt-3 text-xs text-slate-500">
-            <summary className="cursor-pointer hover:text-slate-300">View as table</summary>
+          <details className="mt-3 text-xs text-zinc-500">
+            <summary className="cursor-pointer hover:text-zinc-300">View as table</summary>
             <table className="mt-2 w-full font-mono">
               <thead>
-                <tr className="text-left text-slate-500">
+                <tr className="text-left text-zinc-500">
                   <th className="py-1 font-medium">Day</th>
                   <th className="py-1 text-right font-medium">Finished</th>
                   <th className="py-1 text-right font-medium">Failed</th>
@@ -53,7 +53,7 @@ function HistoryCharts({ samples }: { samples: SamplePoint[] }) {
               </thead>
               <tbody>
                 {[...days].reverse().map((day) => (
-                  <tr key={day.day} className="border-t border-border-subtle text-slate-300">
+                  <tr key={day.day} className="border-t border-border-subtle text-zinc-300">
                     <td className="py-1">{day.day}</td>
                     <td className="py-1 text-right">{day.done}</td>
                     <td className="py-1 text-right">{day.failed}</td>
@@ -67,11 +67,11 @@ function HistoryCharts({ samples }: { samples: SamplePoint[] }) {
       <div className="grid gap-4">
         <Card>
           <SectionTitle title="Queue right now" description="Jobs active or queued, sampled every 5 seconds while this page is open." />
-          {samples.length < 2 ? <p className="py-8 text-center text-xs text-slate-500">Collecting samples...</p> : <Sparkline points={samples} unit={(value) => `${value} ${value === 1 ? 'job' : 'jobs'}`} />}
+          {samples.length < 2 ? <p className="py-8 text-center text-xs text-zinc-500">Collecting samples...</p> : <Sparkline points={samples} unit={(value) => `${value} ${value === 1 ? 'job' : 'jobs'}`} />}
         </Card>
         <Card>
           <SectionTitle title="Finished by type" description="Last 30 days." />
-          {types.length ? <RankedBars rows={types} /> : <p className="text-xs text-slate-500">{data ? 'Nothing finished yet.' : 'Loading...'}</p>}
+          {types.length ? <RankedBars rows={types} /> : <p className="text-xs text-zinc-500">{data ? 'Nothing finished yet.' : 'Loading...'}</p>}
         </Card>
       </div>
     </div>
@@ -108,13 +108,13 @@ export function Stats() {
         </div>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <StatTile label="Mods converted" value={formatNumber(data.totalConverted)} icon={Boxes} accent />
+          <div className="grid gap-y-4 md:grid-cols-2 xl:grid-cols-4">
+            <StatTile label="Mods converted" value={formatNumber(data.totalConverted)} icon={Boxes} />
             <StatTile label="Catalog vehicles" value={formatNumber(data.catalogVehiclesIndexed)} icon={Database} />
             <StatTile label="Fixes applied" value={formatNumber(data.totalFixesApplied)} icon={Wrench} />
             <StatTile label="Space saved" value={formatBytes(data.totalBytesSaved)} icon={HardDriveDownload} />
           </div>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div className="mt-4 grid gap-y-4 md:grid-cols-2">
             <StatTile label="Active or queued right now" value={formatNumber(data.activeNow)} icon={Activity} sub={data.activeNow === 1 ? 'conversion' : 'conversions'} />
             <StatTile label="Typical conversion time" value={formatDuration(data.avgConversionMs)} icon={Clock3} sub="Rolling average of recent jobs" />
           </div>
@@ -133,10 +133,7 @@ export function Stats() {
               ['Uploaded', formatBytes(account.stats.totalInputBytes)],
               ['Delivered', formatBytes(account.stats.totalOutputBytes)],
             ].map(([label, value]) => (
-              <div key={label}>
-                <p className="eyebrow">{label}</p>
-                <p className="mt-1 font-mono text-xl font-bold text-white">{value}</p>
-              </div>
+              <StatTile key={label} label={label} value={value} />
             ))}
           </div>
         </Card>

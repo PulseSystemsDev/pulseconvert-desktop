@@ -56,10 +56,10 @@ async function main() {
   await win.click('button:has-text("Next")');
   await shot('04-welcome-deploy');
   await win.click('text=Skip for now');
-  await win.waitForSelector('text=Quick convert');
+  await win.waitForSelector('text=Recent jobs');
 
-  await win.fill('input[placeholder^="https://www.gta5-mods.com/vehicles"]', 'https://www.gta5-mods.com/vehicles/2024-porsche-911-gt3-rs');
-  await win.click('main form button[type=submit]');
+  await win.fill('input[placeholder^="Paste a gta5-mods"]', 'https://www.gta5-mods.com/vehicles/2024-porsche-911-gt3-rs');
+  await win.click('main form button[type=submit]:has-text("Convert")');
   await sleep(1200);
   await app.evaluate(({ dialog }, file) => {
     dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] });
@@ -81,17 +81,19 @@ async function main() {
     await win.fill('input[placeholder^="https://"]', url);
     await win.click('button:has-text("Add link")');
   }
-  await win.click('text=Options');
   await shot('06-convert-pack');
   await nav('Fix resource');
   await shot('08-fix');
 
   await nav('Catalog');
   await shot('09-catalog');
+  await win.click('button[aria-label="Sort"]');
+  await shot('09b-catalog-sort');
+  await win.keyboard.press('Escape');
   await win.locator('article').first().click();
   await sleep(900);
   await win.click('button:has-text("View in 3D")');
-  await sleep(2500);
+  await sleep(process.env.MOCK_PREVIEW_GLB ? 8000 : 2500);
   await shot('10-catalog-3d');
   await win.keyboard.press('Escape');
   await nav('Gallery');
@@ -117,10 +119,21 @@ async function main() {
   await shot('16-stats');
 
   await nav('Tools');
+  await win.waitForSelector('text=ELS Converter');
+  await shot('17-tools');
+  const toolWindow = app.waitForEvent('window');
+  await win.click('button:has-text("ELS Converter")');
+  const tw = await toolWindow;
+  await tw.waitForLoadState();
+  await sleep(800);
+  await tw.screenshot({ path: path.join(OUT, '17c-tool-window.png') });
+  console.log('saved 17c-tool-window');
+  await tw.close();
+  await win.click('button[role=tab]:has-text("Collision checker")');
   await win.fill('textarea', 'police\nmy_gt3rs\nm4comp_pc\nr34_vspec');
   await win.click('button:has-text("Check for collisions")');
   await sleep(1000);
-  await shot('17-tools');
+  await shot('17b-collisions');
   await nav('Deploy');
   await win.click('text=Remote server (SFTP)');
   await shot('18-deploy');

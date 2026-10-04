@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
-// Validated with the dataviz palette checker against the card surface (#0f1520): both inside the
+// Validated with the dataviz palette checker against the card surface (#161618): both inside the
 // lightness band, CVD separation 10.9, normal-vision 26.1. Keep these two as a pair.
-export const CHART_COLORS = { done: '#11a090', failed: '#e0654f', line: '#ff7a33' };
-const SURFACE = '#0f1520';
-const GRID = '#1b2638';
+export const CHART_COLORS = { done: '#11a090', failed: '#e0654f', line: '#f07b3f' };
+const SURFACE = '#161618';
+const GRID = '#232326';
 
 function useWidth<T extends HTMLElement>(): [React.RefObject<T | null>, number] {
   const ref = useRef<T>(null);
@@ -31,7 +31,7 @@ function Tooltip({ x, y, children, width }: { x: number; y: number; children: Re
   const left = Math.min(Math.max(x, 70), width - 70);
   return (
     <div
-      className="pointer-events-none absolute z-10 min-w-[128px] -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-bg-elevated px-3 py-2 text-xs shadow-panel"
+      className="pointer-events-none absolute z-10 min-w-[128px] -translate-x-1/2 -translate-y-full rounded-[5px] border border-border bg-bg-elevated px-3 py-2 text-xs shadow-panel"
       style={{ left, top: y - 10 }}
     >
       {children}
@@ -45,7 +45,7 @@ function Swatch({ color, line }: { color: string; line?: boolean }) {
 
 export function Legend({ items }: { items: Array<{ label: string; color: string; line?: boolean }> }) {
   return (
-    <div className="flex items-center gap-4 text-xs text-slate-400">
+    <div className="flex items-center gap-4 text-xs text-zinc-400">
       {items.map((item) => (
         <span key={item.label} className="flex items-center gap-1.5">
           <Swatch color={item.color} line={item.line} />
@@ -91,7 +91,7 @@ export function DailyBars({ days, height = 220 }: { days: DayPoint[]; height?: n
           {ticks.map((tick) => (
             <g key={tick}>
               <line x1={padLeft} x2={width} y1={y(tick)} y2={y(tick)} stroke={GRID} strokeWidth={1} />
-              <text x={padLeft - 8} y={y(tick)} dy="0.32em" textAnchor="end" className="fill-slate-500 font-mono text-[10px]">
+              <text x={padLeft - 8} y={y(tick)} dy="0.32em" textAnchor="end" className="fill-zinc-500 font-mono text-[10px]">
                 {Math.round(tick).toLocaleString()}
               </text>
             </g>
@@ -107,7 +107,7 @@ export function DailyBars({ days, height = 220 }: { days: DayPoint[]; height?: n
                 {day.done > 0 && <path d={day.failed > 0 ? `M${x},${baseline} V${doneTop} H${x + barW} V${baseline} Z` : topRoundedRect(x, doneTop, barW, baseline - doneTop, 4)} fill={CHART_COLORS.done} />}
                 {day.failed > 0 && <path d={topRoundedRect(x, failedTop, barW, Math.max(0, doneTop - failedTop - (day.done > 0 ? 2 : 0)), 4)} fill={CHART_COLORS.failed} />}
                 {index % 5 === (days.length - 1) % 5 && (
-                  <text x={index === days.length - 1 ? x + barW : x + barW / 2} y={height - 6} textAnchor={index === days.length - 1 ? 'end' : 'middle'} className="fill-slate-500 text-[10px]">
+                  <text x={index === days.length - 1 ? x + barW : x + barW / 2} y={height - 6} textAnchor={index === days.length - 1 ? 'end' : 'middle'} className="fill-zinc-500 text-[10px]">
                     {dayLabel(day.day)}
                   </text>
                 )}
@@ -120,13 +120,13 @@ export function DailyBars({ days, height = 220 }: { days: DayPoint[]; height?: n
       {hover !== null && days[hover] && (
         <Tooltip x={padLeft + hover * slot + slot / 2} y={y(days[hover].done + days[hover].failed)} width={width}>
           <p className="mb-1 font-semibold text-white">{dayLabel(days[hover].day, 'long')}</p>
-          <p className="flex items-center justify-between gap-4 text-slate-300">
+          <p className="flex items-center justify-between gap-4 text-zinc-300">
             <span className="flex items-center gap-1.5">
               <Swatch color={CHART_COLORS.done} /> Finished
             </span>
             <span className="font-mono text-white">{days[hover].done.toLocaleString()}</span>
           </p>
-          <p className="flex items-center justify-between gap-4 text-slate-300">
+          <p className="flex items-center justify-between gap-4 text-zinc-300">
             <span className="flex items-center gap-1.5">
               <Swatch color={CHART_COLORS.failed} /> Failed
             </span>
@@ -183,7 +183,7 @@ export function Sparkline({ points, height = 120, unit }: { points: SamplePoint[
               <path d={line} fill="none" stroke={CHART_COLORS.line} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
             </>
           )}
-          {hover !== null && <line x1={x(hover)} x2={x(hover)} y1={padY} y2={height - padY} stroke="#34445f" strokeWidth={1} />}
+          {hover !== null && <line x1={x(hover)} x2={x(hover)} y1={padY} y2={height - padY} stroke="#3b3b41" strokeWidth={1} />}
           {last && (
             <circle cx={x(hover ?? points.length - 1)} cy={y(points[hover ?? points.length - 1].value)} r={4} fill={CHART_COLORS.line} stroke={SURFACE} strokeWidth={2} />
           )}
@@ -191,7 +191,7 @@ export function Sparkline({ points, height = 120, unit }: { points: SamplePoint[
       )}
       {hover !== null && points[hover] && (
         <Tooltip x={x(hover)} y={y(points[hover].value)} width={width}>
-          <p className="text-slate-400">{new Date(points[hover].at).toLocaleTimeString()}</p>
+          <p className="text-zinc-400">{new Date(points[hover].at).toLocaleTimeString()}</p>
           <p className="font-mono font-semibold text-white">{unit(points[hover].value)}</p>
         </Tooltip>
       )}
@@ -205,7 +205,7 @@ export function RankedBars({ rows, color = CHART_COLORS.done }: { rows: Array<{ 
     <ul className="space-y-3">
       {rows.map((row) => (
         <li key={row.label} className="grid grid-cols-[110px_minmax(0,1fr)_56px] items-center gap-3 text-[13px]">
-          <span className="truncate text-slate-400">{row.label}</span>
+          <span className="truncate text-zinc-400">{row.label}</span>
           <span className="h-3 overflow-hidden">
             <span className="block h-full rounded-r" style={{ width: `${Math.max(1, (row.value / max) * 100)}%`, background: color }} />
           </span>

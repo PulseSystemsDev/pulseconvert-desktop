@@ -3,9 +3,9 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        bg: { base: '#080b12', surface: '#0f1520', elevated: '#172131', hover: '#1c2840' },
-        border: { subtle: '#1b2638', DEFAULT: '#253248', strong: '#34445f' },
-        accent: { orange: '#ff7a33', teal: '#2dd4bf', 'orange-dim': 'rgba(255,122,51,0.14)' },
+        bg: { base: '#111112', surface: '#161618', elevated: '#1d1d20', hover: '#242428' },
+        border: { subtle: '#232326', DEFAULT: '#2c2c30', strong: '#3b3b41' },
+        accent: { orange: '#f07b3f', teal: '#4fb3a6', 'orange-dim': 'rgba(240,123,63,0.12)' },
         status: {
           success: { DEFAULT: '#5fae6e', bg: 'rgba(95,174,110,0.12)', border: 'rgba(95,174,110,0.3)' },
           danger: { DEFAULT: '#d9685b', bg: 'rgba(217,104,91,0.12)', border: 'rgba(217,104,91,0.3)' },
@@ -14,14 +14,14 @@ module.exports = {
         },
       },
       fontFamily: {
-        sans: ['Geist', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        display: ['Geist', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+        sans: ['IBM Plex Sans', 'Segoe UI', 'system-ui', 'sans-serif'],
+        display: ['IBM Plex Sans', 'Segoe UI', 'system-ui', 'sans-serif'],
+        mono: ['IBM Plex Mono', 'Consolas', 'ui-monospace', 'monospace'],
       },
       boxShadow: {
-        glow: '0 0 20px rgba(255,122,51,0.15)',
-        'glow-lg': '0 0 28px rgba(255,122,51,0.22)',
-        panel: '0 18px 45px rgba(0,0,0,0.42)',
+        glow: 'none',
+        'glow-lg': 'none',
+        panel: '0 12px 32px rgba(0,0,0,0.45)',
       },
       keyframes: {
         'fade-in': { from: { opacity: '0' }, to: { opacity: '1' } },

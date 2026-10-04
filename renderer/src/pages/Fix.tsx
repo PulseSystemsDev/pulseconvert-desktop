@@ -46,7 +46,7 @@ export function Fix() {
             <Card key={title}>
               <Icon className="h-5 w-5 text-accent-orange" />
               <p className="mt-3 text-sm font-semibold text-white">{title}</p>
-              <p className="mt-1 text-[13px] leading-relaxed text-slate-500">{desc}</p>
+              <p className="mt-1 text-[13px] leading-relaxed text-zinc-500">{desc}</p>
             </Card>
           ))}
         </div>

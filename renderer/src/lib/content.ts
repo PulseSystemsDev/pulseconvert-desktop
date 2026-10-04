@@ -23,7 +23,7 @@ export const CONVERT_CATEGORIES: Record<ConvertCategory, CategoryInfo> = {
     placeholder: 'https://www.gta5-mods.com/vehicles/...',
     points: [
       { title: 'Auto-fixes broken vehicles', desc: 'Cross-checks vehicles.meta, handling.meta, carcols.meta, carvariations.meta and load order, patching what it safely can.' },
-      { title: 'Preserves quality', desc: 'Oversized texture dictionaries are split correctly for FiveM. Original resolution is kept unless you pick performance.' },
+      { title: 'Preserves quality', desc: 'Oversized texture dictionaries are split correctly for FiveM. Original resolution is always kept.' },
       { title: 'Builds packs', desc: 'Add several vehicles or links and get them back as one pack with a server.cfg snippet.' },
     ],
   },

@@ -1,6 +1,7 @@
 const http = require('http');
 const crypto = require('crypto');
 const yazl = require('yazl');
+const fs = require('fs');
 
 const PORT = Number(process.env.MOCK_PORT || 4599);
 const AUTO_APPROVE_AFTER_POLLS = Number(process.env.MOCK_APPROVE_AFTER ?? 2);
@@ -257,6 +258,7 @@ function sampleZip(name) {
 }
 
 function tinyGlb() {
+  if (process.env.MOCK_PREVIEW_GLB) return fs.readFileSync(process.env.MOCK_PREVIEW_GLB);
   const positions = [
     -1.6, -0.35, -0.8, 1.6, -0.35, -0.8, 1.6, 0.35, -0.8, -1.6, 0.35, -0.8, -1.6, -0.35, 0.8, 1.6, -0.35, 0.8, 1.6, 0.35, 0.8, -1.6, 0.35, 0.8,
     -0.8, 0.35, -0.7, 0.9, 0.35, -0.7, 0.6, 0.8, -0.6, -0.5, 0.8, -0.6, -0.8, 0.35, 0.7, 0.9, 0.35, 0.7, 0.6, 0.8, 0.6, -0.5, 0.8, 0.6,
@@ -389,6 +391,12 @@ const server = http.createServer(async (req, res) => {
     if (action === '/download') return send(res, 200, await sampleZip((job.title ?? 'resource').toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 40)), 'application/zip');
     if (action === '/preview') return send(res, 200, tinyGlb(), 'model/gltf-binary');
     if (action === '/rerun') return send(res, 200, { jobId: createJob(job.title, 'url') });
+    if (action === '/cancel' && method === 'POST') {
+      const wasRunning = job.status !== 'done' && job.status !== 'failed';
+      if (wasRunning) Object.assign(job, { status: 'failed', error: 'Cancelled.', completedAt: new Date().toISOString() });
+      console.log(`[mock] cancel ${job.id}: ${wasRunning ? 'cancelled' : 'already finished'}`);
+      return send(res, 200, { status: wasRunning ? 'cancelled' : 'finished' });
+    }
     return send(res, 200, { ok: true, id: 'shot1' });
   }
   if (path === '/api/upload/init') {
@@ -445,6 +453,26 @@ const server = http.createServer(async (req, res) => {
     if (prebuilt[3] === 'convert') return send(res, 200, { jobId: createJob(entry.title, 'url') });
     if (!entry.prebuilt) return send(res, 404, { cached: false });
     return send(res, 200, await sampleZip(entry.id), 'application/zip');
+  }
+  if (path === '/api/tools/available') {
+    const tool = (slug, name, category, summary, extra = {}) => ({ slug, name, href: `/tools/${slug}`, category, summary, restricted: false, adminOnly: false, untested: false, isNew: false, ...extra });
+    return send(res, 200, {
+      admin: false,
+      tools: [
+        tool('backdoor-scanner', 'Backdoor Scanner', 'Security', 'Finds obfuscated loaders, remote code and webhook stealers in a resource.'),
+        tool('els-converter', 'ELS Converter', 'Emergency', 'Converts vehicle ELS configs between classic ELS, MISS-ELS, oELS and z_els.', { restricted: true, untested: true, isNew: true }),
+        tool('fxmanifest-generator', 'fxmanifest Generator', 'Resources', 'Writes a correct fxmanifest.lua for a folder of files.'),
+        tool('stream-auditor', 'Stream Auditor', 'Resources', 'Lists oversized and duplicate streamed files.'),
+        { ...tool('workspaces', 'Workspaces', 'Server', 'A live mirror of your server: browse every file, check its health and keep snapshots.', { restricted: true, untested: true }), href: '/workspaces' },
+      ],
+    });
+  }
+  if (path === '/api/desktop/handoff' && req.method === 'POST') {
+    return send(res, 200, { url: `http://127.0.0.1:${PORT}/api/desktop/handoff/mock-code-0123456789abcdef?to=${encodeURIComponent(json().path ?? '/tools')}` });
+  }
+  if (path.startsWith('/api/desktop/handoff/')) {
+    const to = url.searchParams.get('to') ?? '/tools';
+    return send(res, 200, `<!doctype html><html><head><title>Pulse Convert</title><style>body{margin:0;background:#0b0f16;color:#e8edf5;font:14px system-ui}header{padding:14px 24px;border-bottom:1px solid #1d2636;font-weight:600}main{padding:32px 24px}h1{font-size:24px;margin:0 0 8px}p{color:#9aa6b8}</style></head><body><header>Pulse Convert</header><main><h1>${to === '/workspaces' ? 'Workspaces' : 'ELS Converter'}</h1><p>This window shows the real site page (${to}) signed in as you. The mock server stands in for it here.</p></main></body></html>`, 'text/html');
   }
   if (path === '/api/tools/collisions') {
     const vanilla = { adder: 'adder', police: 'police', sultan: 'sultan', boxville: 'boxville' };
