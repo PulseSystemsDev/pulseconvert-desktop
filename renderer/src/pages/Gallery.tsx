@@ -45,15 +45,15 @@ export function Gallery() {
           {shots.map((shot) => (
             <button key={shot.id} onClick={() => setOpen(shot)} className="card group overflow-hidden text-left">
               <img src={pc.resolveUrl(shot.imageUrl) ?? undefined} alt={shot.title ?? 'Converted car'} loading="lazy" className="aspect-video w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
-              {shot.title && <p className="truncate p-3 text-[13px] text-slate-300">{shot.title}</p>}
+              {shot.title && <p className="truncate p-3 text-[13px] text-zinc-300">{shot.title}</p>}
             </button>
           ))}
         </div>
       )}
       {open && (
         <div className="fixed inset-0 z-50 flex animate-fade-in items-center justify-center bg-black/85 p-10" onClick={() => setOpen(null)}>
-          <img src={pc.resolveUrl(open.imageUrl) ?? undefined} alt={open.title ?? ''} className="max-h-full max-w-full rounded-lg shadow-panel" />
-          <button className="absolute right-6 top-16 text-slate-300 hover:text-white" aria-label="Close">
+          <img src={pc.resolveUrl(open.imageUrl) ?? undefined} alt={open.title ?? ''} className="max-h-full max-w-full rounded-[5px] shadow-panel" />
+          <button className="absolute right-6 top-16 text-zinc-300 hover:text-white" aria-label="Close">
             <X className="h-6 w-6" />
           </button>
         </div>

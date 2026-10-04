@@ -241,6 +241,7 @@ export interface PulseConvertDesktopAPI {
 
   showInFolder: (filePath: string) => void;
   openOutputFolder: () => void;
+  openWebTool: (pagePath: string, title: string) => Promise<ApiResult<null>>;
   openExternal: (url: string) => void;
 
   getSettings: () => Promise<DesktopSettings>;

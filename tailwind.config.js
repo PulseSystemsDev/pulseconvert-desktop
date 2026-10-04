@@ -14,9 +14,9 @@ module.exports = {
         },
       },
       fontFamily: {
-        sans: ['Geist', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        display: ['Geist', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+        sans: ['IBM Plex Sans', 'Segoe UI', 'system-ui', 'sans-serif'],
+        display: ['IBM Plex Sans', 'Segoe UI', 'system-ui', 'sans-serif'],
+        mono: ['IBM Plex Mono', 'Consolas', 'ui-monospace', 'monospace'],
       },
       // Softly rounded everywhere, same scale as the website: controls 8-10px, panels 12-14px.
       borderRadius: {
@@ -27,9 +27,9 @@ module.exports = {
         '2xl': '18px',
       },
       boxShadow: {
-        glow: '0 0 20px rgba(255,122,51,0.15)',
-        'glow-lg': '0 0 28px rgba(255,122,51,0.22)',
-        panel: '0 18px 45px rgba(0,0,0,0.42)',
+        glow: 'none',
+        'glow-lg': 'none',
+        panel: '0 12px 32px rgba(0,0,0,0.45)',
       },
       keyframes: {
         'fade-in': { from: { opacity: '0' }, to: { opacity: '1' } },

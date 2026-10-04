@@ -48,12 +48,12 @@ export function Welcome({ settings, onDone }: { settings: DesktopSettings; onDon
 
   return (
     <div className="fixed inset-0 top-11 z-[60] flex animate-fade-in items-center justify-center bg-bg-base/85 p-6 backdrop-blur-sm">
-      <div className="w-full max-w-[560px] animate-rise rounded-2xl border border-border bg-bg-surface shadow-panel">
+      <div className="w-full max-w-[560px] animate-rise rounded-md border border-border bg-bg-surface shadow-panel">
         <div className="flex items-center gap-2 border-b border-border-subtle px-7 pt-6 pb-5">
           <img src={mark} alt="" className="h-9 w-9" />
           <div className="flex-1">
             <p className="text-[15px] font-bold text-white">Welcome{account?.username ? `, ${account.username}` : ''}</p>
-            <p className="text-xs text-slate-500">Two quick choices and you're set. Step {step + 1} of 2.</p>
+            <p className="text-xs text-zinc-500">Step {step + 1} of 2</p>
           </div>
           <div className="flex gap-1.5">
             {[0, 1].map((index) => (
@@ -66,7 +66,7 @@ export function Welcome({ settings, onDone }: { settings: DesktopSettings; onDon
           {step === 0 ? (
             <>
               <h2 className="text-lg font-bold text-white">Where should finished resources go?</h2>
-              <p className="mt-1 text-[13px] text-slate-400">Every conversion, optimization and download is saved here as a ZIP.</p>
+              <p className="mt-1 text-[13px] text-zinc-400">Every conversion, optimization and download is saved here as a ZIP.</p>
               <div className="mt-5 flex gap-2">
                 <input className="field font-mono text-[13px]" readOnly value={outputFolder} />
                 <Button
@@ -87,7 +87,7 @@ export function Welcome({ settings, onDone }: { settings: DesktopSettings; onDon
           ) : (
             <>
               <h2 className="text-lg font-bold text-white">Send them straight to your server?</h2>
-              <p className="mt-1 text-[13px] text-slate-400">Pulse Convert can drop every finished resource where your server can load it.</p>
+              <p className="mt-1 text-[13px] text-zinc-400">Pulse Convert can drop every finished resource where your server can load it.</p>
               <div className="mt-5 space-y-2">
                 {DESTINATIONS.map(({ value, title, desc, icon: Icon }) => {
                   const active = deployMode === value;
@@ -95,12 +95,12 @@ export function Welcome({ settings, onDone }: { settings: DesktopSettings; onDon
                     <button
                       key={value}
                       onClick={() => setDeployMode(value)}
-                      className={cx('flex w-full items-center gap-3 rounded-xl border p-3.5 text-left transition-colors', active ? 'border-accent-orange/50 bg-accent-orange/[0.05]' : 'border-border-subtle hover:border-border')}
+                      className={cx('flex w-full items-center gap-3 rounded-md border p-3.5 text-left transition-colors', active ? 'border-accent-orange/50 bg-accent-orange/[0.05]' : 'border-border-subtle hover:border-border')}
                     >
-                      <Icon className={cx('h-5 w-5 shrink-0', active ? 'text-accent-orange' : 'text-slate-500')} />
+                      <Icon className={cx('h-5 w-5 shrink-0', active ? 'text-accent-orange' : 'text-zinc-500')} />
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm font-semibold text-white">{title}</span>
-                        <span className="block text-xs text-slate-500">{desc}</span>
+                        <span className="block text-xs text-zinc-500">{desc}</span>
                       </span>
                       <span className={cx('flex h-5 w-5 items-center justify-center rounded-full border', active ? 'border-accent-orange bg-accent-orange' : 'border-border')}>
                         {active && <Check className="h-3 w-3 text-bg-base" />}
@@ -128,7 +128,7 @@ export function Welcome({ settings, onDone }: { settings: DesktopSettings; onDon
         </div>
 
         <div className="flex items-center justify-between border-t border-border-subtle px-7 py-4">
-          <button className="text-xs font-semibold text-slate-500 hover:text-white" onClick={() => void finish(true)}>
+          <button className="text-xs font-semibold text-zinc-500 hover:text-white" onClick={() => void finish(true)}>
             Skip for now
           </button>
           <div className="flex gap-2">

@@ -25,6 +25,7 @@ const ROUTES: Array<{ method: ApiRequest['method']; pattern: RegExp; auth: boole
   { method: 'GET', pattern: /^\/api\/catalog-content\/list$/, auth: true },
   { method: 'POST', pattern: new RegExp(`^/api/(vehicles|animations|catalog-content)/${ID}/favorite$`), auth: true },
   { method: 'POST', pattern: /^\/api\/tools\/collisions$/, auth: true },
+  { method: 'GET', pattern: /^\/api\/tools\/available$/, auth: true },
 ];
 
 export async function proxyApiRequest(value: unknown): Promise<ApiResult> {

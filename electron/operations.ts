@@ -1,4 +1,5 @@
 import { app } from 'electron';
+import log from 'electron-log';
 import fs from 'fs';
 import path from 'path';
 import config from './configStore';
@@ -145,8 +146,24 @@ async function maybeDeploy(ctx: TaskContext, outputPath: string): Promise<void> 
   ctx.update({ deploy: outcome });
 }
 
+/** Pressing X stops the job on the server too (it deletes its own files) and removes anything saved here. */
+function cancelServerJobOnAbort(ctx: TaskContext, jobId: string): void {
+  ctx.signal.addEventListener(
+    'abort',
+    () => {
+      void desktopFetch(`/api/jobs/${encodeURIComponent(jobId)}/cancel`, { method: 'POST' }).catch((err) =>
+        log.warn(`[tasks] could not cancel server job ${jobId}: ${(err as Error).message}`),
+      );
+      const saved = ctx.task.outputPath;
+      if (saved) fs.rmSync(saved, { force: true });
+    },
+    { once: true },
+  );
+}
+
 async function finishServerJob(ctx: TaskContext, jobId: string, fallbackStem: string, from: number, alwaysDownload = false, suffix = ''): Promise<JobRecord> {
   ctx.update({ jobId });
+  cancelServerJobOnAbort(ctx, jobId);
   const job = await pollJob(ctx, jobId, from, 90);
   const shouldDownload = alwaysDownload || ctx.task.origin === 'dashboard' || config.get('autoDownload');
   if (!shouldDownload) {
@@ -278,7 +295,7 @@ export function downloadCatalogItem(request: CatalogDownloadRequest): Task {
       if (!(err instanceof ApiError && err.status === 404)) throw err;
       ctx.progress('submitting', 'No prebuilt copy yet, starting a conversion', 5);
       const convertPath = request.kind === 'vehicle' ? `/api/vehicles/${encodeURIComponent(request.id)}/convert` : `/api/animations/${encodeURIComponent(request.id)}/convert`;
-      const { jobId } = await postJson<{ jobId: string }>(convertPath, { conversionProfile: 'preserve', conversionTarget: config.get('defaultTarget') }, ctx.signal);
+      const { jobId } = await postJson<{ jobId: string }>(convertPath, { conversionProfile: 'preserve', conversionTarget: 'addon' }, ctx.signal);
       await finishServerJob(ctx, jobId, request.title, 10, true);
     }
     ctx.progress('done', 'Finished', 100);

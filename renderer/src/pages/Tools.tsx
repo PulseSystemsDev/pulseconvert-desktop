@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle2, FileSearch, FolderOpen, Search, Siren } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ExternalLink, FileSearch, FolderOpen, LayoutGrid, Search, ShieldCheck, Siren } from 'lucide-react';
 import { pc, type SelectedInput, type Task } from '../lib/bridge';
 import { formatBytes } from '../lib/format';
 import { useRouter } from '../lib/router';
 import { useToast } from '../lib/toast';
-import { Badge, Button, Card, Field, PageHeader, ProgressBar, Segmented, SectionTitle } from '../components/ui';
+import { Badge, Button, Card, EmptyState, ErrorNote, Field, PageHeader, ProgressBar, Segmented, SectionTitle, Skeleton, Spinner } from '../components/ui';
+import { useApi } from '../lib/hooks';
 import { Dropzone } from '../components/Dropzone';
 import { SelectedFile } from './Optimize';
 
-type Tool = 'collisions' | 'map' | 'sirens';
+type Tool = 'site' | 'collisions' | 'map' | 'sirens';
 
 interface CollisionResult {
   name: string;
@@ -51,7 +52,7 @@ function Collisions() {
           className="field resize-none font-mono text-[13px]"
         />
         <div className="mt-4 flex items-center justify-between">
-          <span className="text-xs text-slate-500">{names.length} names</span>
+          <span className="text-xs text-zinc-500">{names.length} names</span>
           <Button variant="primary" icon={Search} disabled={names.length === 0 || names.length > 2000} loading={busy} onClick={() => void check()}>
             Check for collisions
           </Button>
@@ -64,7 +65,7 @@ function Collisions() {
             {[...collisions, ...clear].map((row) => {
               const bad = row.collidesWithVanilla || row.collidesWithIssued;
               return (
-                <li key={row.name} className="flex items-start gap-3 rounded-lg border border-border-subtle bg-bg-base/60 px-3 py-2">
+                <li key={row.name} className="flex items-start gap-3 rounded-[5px] border border-border-subtle bg-bg-base/60 px-3 py-2">
                   {bad ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-status-danger" /> : <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-status-success" />}
                   <div className="min-w-0 flex-1">
                     <p className="font-mono text-[13px] text-white">{row.name}</p>
@@ -75,10 +76,10 @@ function Collisions() {
                         {row.collidesWithIssued && `matches Pulse Convert addon ${row.collidesWithIssued}`}
                       </p>
                     ) : (
-                      <p className="text-xs text-slate-500">No collision</p>
+                      <p className="text-xs text-zinc-500">No collision</p>
                     )}
                   </div>
-                  <span className="font-mono text-[11px] text-slate-600">0x{(row.hash >>> 0).toString(16).padStart(8, '0')}</span>
+                  <span className="font-mono text-[11px] text-zinc-600">0x{(row.hash >>> 0).toString(16).padStart(8, '0')}</span>
                 </li>
               );
             })}
@@ -106,14 +107,14 @@ function IssueList({ title, items, tone }: { title: string; items: MapReport['mi
         <Badge tone={items.length ? tone : 'success'}>{items.length}</Badge>
       </div>
       {items.length === 0 ? (
-        <p className="text-xs text-slate-500">None found.</p>
+        <p className="text-xs text-zinc-500">None found.</p>
       ) : (
         <ul className="max-h-[220px] space-y-1 overflow-y-auto">
           {items.map((item, index) => (
             <li key={`${item.name}-${index}`} className="rounded-md border border-border-subtle bg-bg-base/60 px-3 py-1.5 text-xs">
               <span className="font-mono text-white">{item.name}</span>
-              <span className="text-slate-500"> · {item.file}</span>
-              <span className="block text-slate-400">{item.reason}</span>
+              <span className="text-zinc-500"> · {item.file}</span>
+              <span className="block text-zinc-400">{item.reason}</span>
             </li>
           ))}
         </ul>
@@ -163,9 +164,9 @@ function MapInspector({ tasks }: { tasks: Task[] }) {
             <SectionTitle title={task.title} description={`${report.archetypeCount} archetypes · ${formatBytes(report.totalStreamBytes)} streamed`} />
             <div className="grid grid-cols-5 gap-2">
               {Object.entries(report.fileCounts).map(([ext, count]) => (
-                <div key={ext} className="rounded-lg border border-border-subtle bg-bg-base/60 p-3 text-center">
+                <div key={ext} className="rounded-[5px] border border-border-subtle bg-bg-base/60 p-3 text-center">
                   <p className="font-mono text-lg font-bold text-white">{count}</p>
-                  <p className="text-[11px] text-slate-500">.{ext}</p>
+                  <p className="text-[11px] text-zinc-500">.{ext}</p>
                 </div>
               ))}
             </div>
@@ -219,7 +220,7 @@ function Sirens({ tasks }: { tasks: Task[] }) {
           </Field>
         </div>
         <details className="mt-4">
-          <summary className="cursor-pointer text-[13px] font-medium text-slate-400 hover:text-white">Custom data file paths (optional)</summary>
+          <summary className="cursor-pointer text-[13px] font-medium text-zinc-400 hover:text-white">Custom data file paths (optional)</summary>
           <div className="mt-3 grid gap-3">
             <input className="field text-xs" value={form.gamedataPath} onChange={set('gamedataPath')} placeholder="AUDIO_GAMEDATA path (e.g. mysirens.dat151.rel)" />
             <input className="field text-xs" value={form.sounddataPath} onChange={set('sounddataPath')} placeholder="AUDIO_SOUNDDATA path (e.g. mysirens.dat54.rel)" />
@@ -243,7 +244,7 @@ function Sirens({ tasks }: { tasks: Task[] }) {
               <p className="text-[13px] text-status-danger">{task.error}</p>
             ) : (
               <>
-                <p className="mb-2 text-xs text-slate-400">{task.label}</p>
+                <p className="mb-2 text-xs text-zinc-400">{task.label}</p>
                 <ProgressBar percent={task.percent} />
               </>
             )}
@@ -254,22 +255,107 @@ function Sirens({ tasks }: { tasks: Task[] }) {
   );
 }
 
+interface SiteTool {
+  slug: string;
+  name: string;
+  href: string;
+  category: string;
+  summary: string;
+  restricted: boolean;
+  adminOnly: boolean;
+  untested: boolean;
+  isNew: boolean;
+}
+
+function SiteTools() {
+  const toast = useToast();
+  const { data, error, loading, reload } = useApi<{ admin: boolean; tools: SiteTool[] }>('/api/tools/available');
+  const [query, setQuery] = useState('');
+  const [opening, setOpening] = useState<string | null>(null);
+
+  const open = async (href: string, name: string) => {
+    setOpening(href);
+    const result = await pc.openWebTool(href, name);
+    setOpening(null);
+    if (!result.ok) toast.error('Could not open', result.error);
+  };
+
+  if (loading && !data) return <Skeleton className="h-64" />;
+  if (error) return <ErrorNote message={error} onRetry={reload} />;
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const tools = (data?.tools ?? []).filter((t) => words.every((w) => `${t.name} ${t.summary} ${t.category}`.toLowerCase().includes(w)));
+  const groups = [...new Set(tools.map((t) => t.category))];
+
+  return (
+    <div>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="relative w-full max-w-[320px]">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter tools" className="field h-8 pl-8" />
+        </div>
+        <p className="flex-1 text-[12px] text-zinc-500">
+          {data?.admin ? 'You are an admin, so you see every tool.' : 'Tools your account can use. An admin can give you access to more.'} They open in their own window, signed in as you. Downloads go to your output folder.
+        </p>
+        {data?.admin && (
+          <Button size="sm" icon={ShieldCheck} loading={opening === '/admin/tools'} onClick={() => void open('/admin/tools', 'Tool access')}>
+            Manage tool access
+          </Button>
+        )}
+      </div>
+      {tools.length === 0 ? (
+        <EmptyState icon={Search} title="No tools match" description="Try a different word." />
+      ) : (
+        <div className="space-y-5">
+          {groups.map((group) => (
+            <section key={group}>
+              <h2 className="mb-1.5 text-[12px] text-zinc-500">{group}</h2>
+              <ul className="card divide-y divide-border-subtle">
+                {tools
+                  .filter((t) => t.category === group)
+                  .map((t) => (
+                    <li key={t.slug}>
+                      <button onClick={() => void open(t.href, t.name)} className="flex w-full items-center gap-4 px-4 py-2.5 text-left hover:bg-white/[0.03]">
+                        <span className="w-56 shrink-0">
+                          <span className="block text-[13px] text-zinc-100">{t.name}</span>
+                          <span className="mt-0.5 flex gap-3">
+                            {t.untested && <Badge tone="warning">Beta</Badge>}
+                            {t.adminOnly && <Badge tone="danger">Admin only</Badge>}
+                            {t.restricted && !t.adminOnly && !data?.admin && <Badge tone="success">Granted</Badge>}
+                            {t.isNew && !t.untested && <Badge tone="info">New</Badge>}
+                          </span>
+                        </span>
+                        <span className="min-w-0 flex-1 text-[12px] leading-relaxed text-zinc-400">{t.summary}</span>
+                        {opening === t.href ? <Spinner /> : <ExternalLink className="h-3.5 w-3.5 shrink-0 text-zinc-600" />}
+                      </button>
+                    </li>
+                  ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Tools({ tasks }: { tasks: Task[] }) {
   const { params } = useRouter();
-  const [tool, setTool] = useState<Tool>((params.tool as Tool) || 'collisions');
+  const [tool, setTool] = useState<Tool>((params.tool as Tool) || 'site');
   return (
     <div className="mx-auto max-w-[1180px]">
-      <PageHeader title="Tools" description="Server-side checks and builders for problems conversion alone doesn't solve." />
+      <PageHeader title="Tools" description="Checks and builders for problems conversion alone doesn't solve." />
       <Segmented
         className="mb-5"
         value={tool}
         onChange={setTool}
         options={[
+          { value: 'site', label: 'All tools', icon: LayoutGrid },
           { value: 'collisions', label: 'Collision checker', icon: Search },
           { value: 'map', label: 'Map & MLO inspector', icon: FileSearch },
           { value: 'sirens', label: 'Siren builder', icon: Siren },
         ]}
       />
+      {tool === 'site' && <SiteTools />}
       {tool === 'collisions' && <Collisions />}
       {tool === 'map' && <MapInspector tasks={tasks} />}
       {tool === 'sirens' && <Sirens tasks={tasks} />}

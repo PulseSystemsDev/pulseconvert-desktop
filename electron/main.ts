@@ -38,6 +38,7 @@ import {
 } from './operations';
 import { credentialStorageKind } from './secureStore';
 import { taskManager } from './taskManager';
+import { openWebTool } from './webTools';
 import { checkForUpdates, getUpdateState, installUpdate, onUpdateState, setupUpdater } from './updater';
 import type {
   ApiResult,
@@ -289,13 +290,9 @@ function parseSourceUrl(value: unknown): string {
 }
 
 function parseConvertOptions(raw: Record<string, unknown>): { profile: ConversionProfile; target: ConversionTarget; packBundleMode: 'separate' | 'single' } {
-  const profile = raw.profile ?? raw.conversionProfile ?? 'preserve';
-  const target = raw.target ?? raw.conversionTarget ?? config.get('defaultTarget');
   const packBundleMode = raw.packBundleMode ?? 'separate';
-  if (profile !== 'preserve' && profile !== 'performance') throw new Error('Invalid conversion profile.');
-  if (target !== 'addon' && target !== 'replace') throw new Error('Invalid conversion target.');
   if (packBundleMode !== 'separate' && packBundleMode !== 'single') throw new Error('Invalid pack mode.');
-  return { profile, target, packBundleMode };
+  return { profile: 'preserve', target: 'addon', packBundleMode };
 }
 
 async function handleDeviceCommand(command: DeviceCommand): Promise<{ ok: boolean; result?: unknown; error?: string }> {
@@ -530,6 +527,15 @@ ipcMain.on('shell:show-in-folder', (_event, value: unknown) => {
   if (typeof value === 'string' && isKnownOutput(value) && fs.existsSync(value)) shell.showItemInFolder(value);
 });
 ipcMain.on('shell:open-output', () => void shell.openPath(outputFolder()));
+ipcMain.handle('web-tool:open', async (_event, pagePath: unknown, title: unknown): Promise<ApiResult<null>> => {
+  if (typeof pagePath !== 'string' || !/^\/(tools|workspaces|admin\/tools)(\/|\?|$)/.test(pagePath)) return { ok: false, error: 'That page cannot be opened here.', status: 400 };
+  try {
+    await openWebTool(pagePath, typeof title === 'string' ? title.slice(0, 80) : 'Tool');
+    return { ok: true, data: null };
+  } catch (err) {
+    return { ok: false, error: err instanceof ApiError ? err.message : 'Could not open the tool.', status: err instanceof ApiError ? err.status : 0 };
+  }
+});
 ipcMain.on('shell:open-external', (_event, value: unknown) => openExternal(value));
 
 function currentSettings(): DesktopSettings {
