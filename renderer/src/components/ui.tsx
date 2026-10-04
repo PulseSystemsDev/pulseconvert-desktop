@@ -5,9 +5,9 @@ import { cx } from '../lib/format';
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'teal';
 
 const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'bg-accent-orange text-[#1a0f08] hover:bg-[#f48a52]',
-  secondary: 'border border-border bg-bg-elevated text-zinc-200 hover:border-border-strong hover:bg-bg-hover hover:text-white',
-  ghost: 'text-zinc-400 hover:bg-white/[0.06] hover:text-white',
+  primary: 'btn-accent',
+  secondary: 'btn-quiet',
+  ghost: 'text-slate-400 hover:bg-white/[0.05] hover:text-white',
   danger: 'border border-status-danger-border bg-status-danger-bg text-status-danger hover:bg-status-danger/20',
   teal: 'bg-accent-teal text-bg-base hover:bg-accent-teal/90',
 };
@@ -27,10 +27,10 @@ export function Button({
       {...props}
       disabled={props.disabled || loading}
       className={cx(
-        'inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[5px] font-medium transition-colors duration-100 disabled:cursor-not-allowed disabled:opacity-45',
-        size === 'sm' && 'h-7 px-2.5 text-[12px]',
-        size === 'md' && 'h-8 px-3 text-[13px]',
-        size === 'lg' && 'h-9 px-4 text-[13px]',
+        'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[10px] font-semibold transition-[background-color,border-color,color,transform,box-shadow] duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45',
+        size === 'sm' && 'h-8 px-3 text-xs',
+        size === 'md' && 'h-10 px-4 text-sm',
+        size === 'lg' && 'h-12 px-6 text-[15px]',
         BUTTON_VARIANTS[variant],
         className,
       )}
@@ -112,9 +112,9 @@ export function PageHeader({ title, description, actions, eyebrow }: { title: st
   return (
     <header className="mb-5 flex items-end justify-between gap-6 border-b border-border-subtle pb-4">
       <div className="min-w-0">
-        {eyebrow && <p className="eyebrow mb-1">{eyebrow}</p>}
-        <h1 className="text-[18px] font-semibold leading-tight text-white">{title}</h1>
-        {description && <p className="mt-1 max-w-[80ch] text-[12px] leading-relaxed text-zinc-500">{description}</p>}
+        {eyebrow && <p className="eyebrow mb-2">{eyebrow}</p>}
+        <h1 className="text-fill text-[28px] font-semibold leading-tight tracking-[-0.03em]">{title}</h1>
+        {description && <p className="mt-1.5 max-w-[68ch] text-sm leading-relaxed text-slate-400">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </header>
@@ -173,8 +173,8 @@ export function Segmented<T extends string>({
             aria-selected={active}
             onClick={() => onChange(option.value)}
             className={cx(
-              'inline-flex h-7 items-center gap-1.5 rounded-[4px] px-2.5 text-[12px] font-medium transition-colors',
-              active ? 'bg-bg-hover text-white' : 'text-zinc-400 hover:text-white',
+              'inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[13px] font-medium transition-colors',
+              active ? 'bg-bg-elevated text-white shadow-[inset_0_0_0_1px_#262a35]' : 'text-slate-400 hover:text-white',
             )}
           >
             {Icon && <Icon className="h-3.5 w-3.5" />}

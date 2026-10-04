@@ -139,12 +139,12 @@ function createWindow(): void {
     minHeight: 680,
     title: 'Pulse Convert',
     icon: process.platform === 'linux' ? iconPath() : undefined,
-    backgroundColor: '#111112',
+    backgroundColor: '#0a0b0f',
     show: false,
     titleBarStyle: 'hidden',
     ...(process.platform === 'darwin'
       ? { trafficLightPosition: { x: 16, y: 14 } }
-      : { titleBarOverlay: { color: '#0d0d0e', symbolColor: '#b4b4ba', height: 40 } }),
+      : { titleBarOverlay: { color: '#0a0b0f', symbolColor: '#c7d0dd', height: 44 } }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

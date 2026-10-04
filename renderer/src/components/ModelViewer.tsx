@@ -133,7 +133,7 @@ export default function ModelViewer({ source }: { source: { kind: 'job' | 'vehic
   }, [source.kind, source.id]);
 
   return (
-    <div className="relative aspect-[16/10] overflow-hidden rounded-md border border-border-subtle bg-[radial-gradient(ellipse_at_center,#1d1d20_0%,#111112_75%)]">
+    <div className="relative aspect-[16/10] overflow-hidden rounded-xl border border-border-subtle bg-[radial-gradient(ellipse_at_center,#171a22_0%,#0a0b0f_75%)]">
       <div ref={hostRef} className="absolute inset-0" />
       {state === 'loading' && (
         <div className="absolute inset-0 flex items-center justify-center gap-2 text-xs text-zinc-400">
