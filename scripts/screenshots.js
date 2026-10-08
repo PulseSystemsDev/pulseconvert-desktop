@@ -56,9 +56,24 @@ async function main() {
   await win.click('button:has-text("Next")');
   await shot('04-welcome-deploy');
   await win.click('text=Skip for now');
-  await win.waitForSelector('text=Recent jobs');
+  await win.waitForSelector('text=Recent conversions');
 
-  await win.fill('input[placeholder^="Paste a gta5-mods"]', 'https://www.gta5-mods.com/vehicles/2024-porsche-911-gt3-rs');
+  if (process.env.SCREENSHOT_TOOL_ONLY === '1') {
+    await nav('Tools');
+    await win.waitForSelector('text=Vehicle Creator');
+    await shot('17-tools');
+    const toolWindow = app.waitForEvent('window');
+    await win.click('button:has-text("Vehicle Creator")');
+    const tw = await toolWindow;
+    await tw.waitForSelector('h1:has-text("Vehicle Creator")');
+    await tw.screenshot({ path: path.join(OUT, '17c-vehicle-creator.png') });
+    console.log('saved 17c-vehicle-creator');
+    await app.close();
+    if (errors.length) throw new Error('Renderer errors:\n' + errors.join('\n'));
+    process.exit(0);
+  }
+
+  await win.fill('input[placeholder^="https://www.gta5-mods.com"]', 'https://www.gta5-mods.com/vehicles/2024-porsche-911-gt3-rs');
   await win.click('main form button[type=submit]:has-text("Convert")');
   await sleep(1200);
   await app.evaluate(({ dialog }, file) => {
@@ -119,15 +134,15 @@ async function main() {
   await shot('16-stats');
 
   await nav('Tools');
-  await win.waitForSelector('text=ELS Converter');
+  await win.waitForSelector('text=Vehicle Creator');
   await shot('17-tools');
   const toolWindow = app.waitForEvent('window');
-  await win.click('button:has-text("ELS Converter")');
+  await win.click('button:has-text("Vehicle Creator")');
   const tw = await toolWindow;
   await tw.waitForLoadState();
   await sleep(800);
-  await tw.screenshot({ path: path.join(OUT, '17c-tool-window.png') });
-  console.log('saved 17c-tool-window');
+  await tw.screenshot({ path: path.join(OUT, '17c-vehicle-creator.png') });
+  console.log('saved 17c-vehicle-creator');
   await tw.close();
   await win.click('button[role=tab]:has-text("Collision checker")');
   await win.fill('textarea', 'police\nmy_gt3rs\nm4comp_pc\nr34_vspec');

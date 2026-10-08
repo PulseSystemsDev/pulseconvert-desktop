@@ -1,6 +1,6 @@
 {
   "name": "pulseconvert-desktop",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "Pulse Convert Desktop - convert, optimize, and deploy GTA V mods for FiveM from Windows and Linux",
   "author": "Pulse Systems <support@pulsesystems.dev>",
   "main": "dist/electron/main.js",

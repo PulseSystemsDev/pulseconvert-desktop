@@ -461,6 +461,7 @@ const server = http.createServer(async (req, res) => {
       tools: [
         tool('backdoor-scanner', 'Backdoor Scanner', 'Security', 'Finds obfuscated loaders, remote code and webhook stealers in a resource.'),
         tool('els-converter', 'ELS Converter', 'Emergency', 'Converts vehicle ELS configs between classic ELS, MISS-ELS, oELS and z_els.', { restricted: true, untested: true, isNew: true }),
+        tool('vehicle-creator', 'Vehicle Creator', 'Vehicles', 'Turns a separated 3D model into a structured GTA V and FiveM vehicle using your donor fragment.', { restricted: true, untested: true, isNew: true }),
         tool('fxmanifest-generator', 'fxmanifest Generator', 'Resources', 'Writes a correct fxmanifest.lua for a folder of files.'),
         tool('stream-auditor', 'Stream Auditor', 'Resources', 'Lists oversized and duplicate streamed files.'),
         { ...tool('workspaces', 'Workspaces', 'Server', 'A live mirror of your server: browse every file, check its health and keep snapshots.', { restricted: true, untested: true }), href: '/workspaces' },
@@ -472,7 +473,8 @@ const server = http.createServer(async (req, res) => {
   }
   if (path.startsWith('/api/desktop/handoff/')) {
     const to = url.searchParams.get('to') ?? '/tools';
-    return send(res, 200, `<!doctype html><html><head><title>Pulse Convert</title><style>body{margin:0;background:#0b0f16;color:#e8edf5;font:14px system-ui}header{padding:14px 24px;border-bottom:1px solid #1d2636;font-weight:600}main{padding:32px 24px}h1{font-size:24px;margin:0 0 8px}p{color:#9aa6b8}</style></head><body><header>Pulse Convert</header><main><h1>${to === '/workspaces' ? 'Workspaces' : 'ELS Converter'}</h1><p>This window shows the real site page (${to}) signed in as you. The mock server stands in for it here.</p></main></body></html>`, 'text/html');
+    const title = to === '/workspaces' ? 'Workspaces' : to === '/tools/vehicle-creator' ? 'Vehicle Creator' : 'ELS Converter';
+    return send(res, 200, `<!doctype html><html><head><title>Pulse Convert</title><style>body{margin:0;background:#0b0f16;color:#e8edf5;font:14px system-ui}header{padding:14px 24px;border-bottom:1px solid #1d2636;font-weight:600}main{padding:32px 24px}h1{font-size:24px;margin:0 0 8px}p{color:#9aa6b8}</style></head><body><header>Pulse Convert</header><main><h1>${title}</h1><p>This window shows the real site page (${to}) signed in as you. The mock server stands in for it here.</p></main></body></html>`, 'text/html');
   }
   if (path === '/api/tools/collisions') {
     const vanilla = { adder: 'adder', police: 'police', sultan: 'sultan', boxville: 'boxville' };
